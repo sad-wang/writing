@@ -1,29 +1,43 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
-import Home from '../views/Home.vue'
+import TaskDetail from '../views/TaskDetail'
+import TaskList from '../views/TaskList'
+import Login from '../views/Login'
+import tcb from 'tcb-js-sdk'
 
 Vue.use(VueRouter)
 
 const routes = [
   {
     path: '/',
-    name: 'Home',
-    component: Home
+    name: 'TaskList',
+    component: TaskList,
+    props: true
   },
   {
-    path: '/about',
-    name: 'About',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import(/* webpackChunkName: "about" */ '../views/About.vue')
+    path: '/taskDetail',
+    name: 'TaskDetail',
+    component: TaskDetail,
+    props: true
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: Login
   }
 ]
 
 const router = new VueRouter({
-  mode: 'history',
   base: process.env.BASE_URL,
   routes
+})
+
+router.beforeEach(async (to, from, next) => {
+  const loginState = await tcb.init({
+    env: 'happy-writing-env-id'
+  }).auth().getLoginState()
+  if (to.name !== 'Login' && !loginState) next({ name: 'Login' })
+  else next()
 })
 
 export default router
