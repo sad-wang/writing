@@ -51,20 +51,8 @@ export default {
         tcb.init({
           env: 'happy-writing-env-id'
         }).auth({ persistence: 'session' }).signInWithTicket(data.ticket).then(res => {
-          this.$message({ message: '登录成功', type: 'success' })
-          setTimeout(() => {
-            router.push({
-              name: 'TaskList',
-              query: {
-                operatorID: data.operatorID
-              }
-            })
-          }, 500)
-        }, error => {
-          console.error(error)
-          this.$message.error('登陆失败')
-          this.initForm()
-        })
+          this.toTaskList(data.operatorID)
+        }, this.loginFail)
       })
     },
     getToken (callback) {
@@ -75,16 +63,24 @@ export default {
       }
       Axios.post(url, loginData).then(res => {
         callback(res.data)
-      }, error => {
-        console.error(error)
-        this.$message.error('登陆失败')
-        this.initForm()
-      })
+      }, this.loginFail)
     },
     initForm () {
       this.loading = false
       this.loginForm.accountID = ''
       this.loginForm.password = ''
+    },
+    loginFail (error) {
+      console.error(error)
+      this.$message.error('登陆失败')
+      this.initForm()
+    },
+    toTaskList (operatorID) {
+      this.$message({ message: '登录成功', type: 'success' })
+      router.push({
+        name: 'TaskList',
+        query: { operatorID }
+      })
     }
   }
 }
@@ -94,7 +90,6 @@ export default {
   .el-card {
     width: 450px;
     height: 300px;
-    margin-left: calc(50vw - 225px);
     margin-top: calc(50vh - 200px);
     .title {
       text-align: center;
