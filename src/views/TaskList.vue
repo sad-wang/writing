@@ -102,7 +102,9 @@ export default {
   },
   methods: {
     init () {
+      this.predicateRouteQuery()
       this.taskType = 'submitted'
+      this.getTaskList('submitted')
     },
     getTaskList (type) {
       this.taskType = type
@@ -137,8 +139,6 @@ export default {
   },
   mounted () {
     this.init()
-    this.predicateRouteQuery()
-    this.getTaskList('submitted')
   }
 }
 </script>
