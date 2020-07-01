@@ -115,7 +115,7 @@
               <div class="collapse-item-content" v-show="step.step3Record.recordData.blobData" v-for="(rectangleData, index) in step.step3Select.rectangleRecord" :key="index">
                 <el-tag type="info" class="tag">{{index + 1}}</el-tag>
                 <el-tag type="danger" class="tag" style="cursor: pointer" @click="deleteRectangle(step.step3Select, index)"><i class="el-icon-delete"></i></el-tag>
-                <el-button @click="record('step3Select',  () => showRectangleCanvas(step.step3Select, index), index)" :loading="rectangleData.state === 'loading'">
+                <el-button @click="record('step3Select', () => showRectangleCanvas(step.step3Select, index), index)" :loading="rectangleData.state === 'loading'">
                   {{computedRecordButtonValue(rectangleData)}}
                 </el-button>
                 <div class="wave" :class="rectangleData.name" v-show="!rectangleData.recordData.blobData"></div>
@@ -602,7 +602,6 @@ export default {
       step.state = 'usable'
     },
     showRectangleCanvas (step, index) {
-      this.drawCircles(step.drawData)
       this.convertImage(step.drawData[index])
       this.$nextTick(() => {
         this.initRectangleCanvas()
