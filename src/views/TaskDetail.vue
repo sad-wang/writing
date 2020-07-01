@@ -82,6 +82,7 @@
             <el-collapse-item title="步骤一 简单介绍和问候" name="step1">
               <div class="collapse-item-content">
                 <el-button @click="record('step1Record')" :loading="step.step1Record.state === 'loading'">{{computedRecordButtonValue(step.step1Record)}}</el-button>
+                <div class="step1Record wave" v-show="!step.step1Record.recordData.blobData"></div>
                 <audio ref="step1Record" controls @play="play($event, step.step1Record)" :src="blobToUrl(step.step1Record.recordData.blobData)"
                        @ended="end"  v-show="step.step1Record.recordData.blobData"></audio>
               </div>
@@ -94,6 +95,7 @@
               </div>
               <div class="collapse-item-content">
                 <el-button @click="record('step2Record')" :loading="step.step2Record.state === 'loading'">{{computedRecordButtonValue(step.step2Record)}}</el-button>
+                <div class="step2Record wave" v-show="!step.step2Record.recordData.blobData"></div>
                 <audio ref="step2Record" controls @play="play($event, step.step2Record)" :src="blobToUrl(step.step2Record.recordData.blobData)"
                        @ended="end" v-show="step.step2Record.recordData.blobData"></audio>
               </div>
@@ -106,6 +108,7 @@
                 <el-button @click="record('step3Record', () => drawCircles(step.step3Select.drawData))" :loading="step.step3Record.state === 'loading'">
                   {{computedRecordButtonValue(step.step3Record)}}
                 </el-button>
+                <div class="step3Record wave" v-show="!step.step3Record.recordData.blobData"></div>
                 <audio ref="step3Record" controls @play="play($event, step.step3Record, () => drawCircles(step.step3Select.drawData))"
                        @ended="end" :src="blobToUrl(step.step3Record.recordData.blobData)" v-show="step.step3Record.recordData.blobData"></audio>
               </div>
@@ -115,6 +118,7 @@
                 <el-button @click="record('step3Select',  () => showRectangleCanvas(step.step3Select, index), index)" :loading="rectangleData.state === 'loading'">
                   {{computedRecordButtonValue(rectangleData)}}
                 </el-button>
+                <div class="wave" :class="rectangleData.name" v-show="!rectangleData.recordData.blobData"></div>
                 <audio :ref="rectangleData.name" controls @play="play($event, rectangleData, undefined,() => showRectangleCanvas(step.step3Select, index))"
                        @ended="end" :src="blobToUrl(rectangleData.recordData.blobData)" v-show="rectangleData.recordData.blobData"></audio>
               </div>
@@ -127,6 +131,7 @@
                 <el-button @click="record('step4Record', () => drawCircles(step.step4Select.drawData))" :loading="step.step4Record.state === 'loading'">
                   {{computedRecordButtonValue(step.step4Record)}}
                 </el-button>
+                <div class="step3Record wave" v-show="!step.step4Record.recordData.blobData"></div>
                 <audio ref="step4Record" controls @play="play($event, step.step4Record, () => drawCircles(step.step4Select.drawData))"
                        @ended="end" :src="blobToUrl(step.step4Record.recordData.blobData)" v-show="step.step4Record.recordData.blobData"></audio>
               </div>
@@ -136,6 +141,7 @@
                 <el-button @click="record('step4Select', () => showRectangleCanvas(step.step4Select, index), index)" :loading="rectangleData.state === 'loading'">
                   {{computedRecordButtonValue(rectangleData)}}
                 </el-button>
+                <div class="wave" :class="rectangleData.name" v-show="!rectangleData.recordData.blobData"></div>
                 <audio :ref="rectangleData.name" controls @play="play($event, rectangleData, undefined,() => showRectangleCanvas(step.step4Select, index))"
                        @ended="end" :src="blobToUrl(rectangleData.recordData.blobData)" v-show="rectangleData.recordData.blobData"></audio>
               </div>
@@ -153,6 +159,7 @@ import router from '../router'
 import Recorder from 'recorder-core'
 import 'recorder-core/src/engine/mp3'
 import 'recorder-core/src/engine/mp3-engine'
+import 'recorder-core/src/extensions/waveview'
 
 export default {
   name: 'TaskDetail',
@@ -260,6 +267,7 @@ export default {
       },
       loading: null,
       rec: null,
+      wave: {},
       color: 'red',
       currentStep: {},
       trophyShow: false,
@@ -380,7 +388,12 @@ export default {
     },
     initRecorder () {
       this.rec = Recorder({
-        type: 'mp3', sampleRate: 16000, bitRate: 16
+        type: 'mp3',
+        sampleRate: 16000,
+        bitRate: 16,
+        onProcess: (buffers, powerLevel, bufferDuration, bufferSampleRate) => {
+          this.wave.input(buffers[buffers.length - 1], powerLevel, bufferSampleRate)
+        }
       })
     },
     initRecordStepData (step) {
@@ -580,6 +593,7 @@ export default {
       this.counting(step).then(() => {
         this.currentStep = step
         this.tempData.time = new Date()
+        this.wave = Recorder.WaveView({ elem: '.' + step.name })
         this.rec.start()
       })
     },
@@ -953,6 +967,10 @@ export default {
         }
       }
     }
+  }
+  .wave {
+    height: 50px;
+    width: 150px;
   }
   audio:focus {
     outline: none;
