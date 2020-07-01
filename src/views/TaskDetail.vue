@@ -58,8 +58,8 @@
                     v-show="currentStep.type === 'rectangleRecord' || rectanglePlay">
             </canvas>
             <div class="shake">
-              <i class="el-icon-trophy-1 rewardIcon" :class="{animation: trophyShow}" ></i>
-              <i class="el-icon-medal rewardIcon" :class="{animation: medalShow}" ></i>
+              <i class="el-icon-trophy-1 rewardIcon" :class="[trophyShow ? 'animation' : '']" ></i>
+              <i class="el-icon-medal rewardIcon" :class="[medalShow ? 'animation' : '']" ></i>
             </div>
           </div>
           <section class="reward">
@@ -695,8 +695,7 @@ export default {
         step.rewardData.forEach(rewardData => {
           if (rewardData.time > event.target.currentTime * 1000) {
             setTimeout(() => {
-              console.log(1)
-              if (this.tempData.time === time && !event.target.paused) {
+              if (!event.target.paused) {
                 this.showReward(rewardData.name)
               }
             }, rewardData.time - event.target.currentTime * 1000)
