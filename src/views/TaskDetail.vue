@@ -20,7 +20,7 @@
         <el-card class="reviewArea" shadow="hover">
           <div slot="header" class="card-header">
             <div class="title">评教区</div>
-            <el-button @click="preview">{{previewState ? '退出预览' : '预览模式'}}<i class="el-icon-view"></i></el-button>
+            <el-button @click="preview(0)">{{previewModeState ? '退出预览' : '预览模式'}}<i class="el-icon-view"></i></el-button>
           </div>
           <transition name="el-zoom-in-top">
             <div class="toolArea" v-show="Object.keys(currentStep).length">
@@ -72,9 +72,9 @@
               <i class="el-icon-medal rewardIcon"></i>
             </el-badge>
           </section>
-          <section class="player" v-show="previewState">
-            <i class="el-icon-video-play icon"></i>
-            <div class="duration">0:00 / 0:00</div>
+          <section class="player" v-show="previewModeState">
+            <i class="icon" @click="preview(2000)" :class="previewData.state ? 'el-icon-video-pause' : 'el-icon-video-play'"></i>
+            <div class="duration">{{computedCurrentDuration}} / {{computedReviewDuration}}</div>
             <el-slider v-model="test" :show-tooltip="false" class="slider"></el-slider>
           </section>
         </el-card>
@@ -89,7 +89,7 @@
                 <el-button @click="record('step1Record')" :loading="step.step1Record.state === 'loading'">{{computedRecordButtonValue(step.step1Record)}}</el-button>
                 <div class="step1Record wave" v-show="!step.step1Record.recordData.blobData"></div>
                 <audio ref="step1Record" controls @play="play($event, step.step1Record)" :src="step.step1Record.recordData.url"
-                       @ended="end" @pause="pause" v-show="step.step1Record.recordData.blobData"></audio>
+                       @ended="end" @pause="pause" @timeupdate="timeUpdate($event)" v-show="step.step1Record.recordData.blobData"></audio>
               </div>
             </el-collapse-item>
             <el-collapse-item title="步骤二 整体评教" name="step2">
@@ -171,6 +171,7 @@ export default {
   data () {
     return {
       test: 100,
+      testa: 0,
       courseData: {
         taskID: null,
         studentName: null,
@@ -229,15 +230,6 @@ export default {
           drawData: [],
           tips: '步骤二整体评价提示整体评价提示整体评价提示整体评价提示整体评价提示整体评价提示'
         },
-        step3Select: {
-          name: 'step3Select',
-          type: 'select',
-          state: 'usable', // 'usable' || 'using'
-          drawData: [],
-          tips: '步骤三选取优秀的字选取优秀的字选取优秀的字选取优秀的字选取优秀的字选取优秀的字',
-          color: '#40bf40',
-          rectangleRecord: []
-        },
         step3Record: {
           name: 'step3Record',
           type: 'record',
@@ -251,13 +243,13 @@ export default {
           drawData: [],
           tips: '步骤三优秀部分整体评教步骤三优秀部分整体评教步骤三优秀部分整体评教步骤三优秀部'
         },
-        step4Select: {
-          name: 'step4Select',
+        step3Select: {
+          name: 'step3Select',
           type: 'select',
           state: 'usable', // 'usable' || 'using'
           drawData: [],
-          tips: '步骤四选取优秀的字选取优秀的字选取优秀的字选取优秀的字选取优秀的字选取优秀的字',
-          color: 'red',
+          tips: '步骤三选取优秀的字选取优秀的字选取优秀的字选取优秀的字选取优秀的字选取优秀的字',
+          color: '#40bf40',
           rectangleRecord: []
         },
         step4Record: {
@@ -272,6 +264,15 @@ export default {
           rewardData: [],
           drawData: [],
           tips: '步骤四优秀部分整体评教步骤三优秀部分整体评教步骤三优秀部分整体评教步骤三优秀部'
+        },
+        step4Select: {
+          name: 'step4Select',
+          type: 'select',
+          state: 'usable', // 'usable' || 'using'
+          drawData: [],
+          tips: '步骤四选取优秀的字选取优秀的字选取优秀的字选取优秀的字选取优秀的字选取优秀的字',
+          color: 'red',
+          rectangleRecord: []
         }
       },
       loading: null,
@@ -293,9 +294,10 @@ export default {
         time: null
       },
       rectanglePlay: false,
-      previewState: false,
-      previewPlay: {
+      previewModeState: false,
+      previewData: {
         state: false,
+        currentDuration: 0.00,
         duration: 0.00
       },
       startable: true
@@ -330,6 +332,35 @@ export default {
     },
     currentCanvas () {
       return this.currentStep && this.currentStep.type === 'rectangleRecord' ? 'rectangleCanvas' : this.currentStep ? 'taskCanvas' : null
+    },
+    computedReviewDuration () {
+      let duration = 0
+      Object.values(this.step).forEach(step => {
+        if (step.type !== 'select') {
+          if (step.recordData.duration) duration += step.recordData.duration
+        } else {
+          step.rectangleRecord.forEach(rectangleStep => {
+            if (rectangleStep.recordData && rectangleStep.recordData.duration) duration += rectangleStep.recordData.duration
+          })
+        }
+      })
+      duration = duration ? `${Math.floor(duration / 60000)}: ${Math.floor(duration % 60000 / 1000 / 10)}${Math.floor(duration % 60000 / 1000 % 10)}` : '0:00'
+      return duration
+    },
+    computedCurrentDuration () {
+      let duration = 0
+      Object.values(this.step).forEach(step => {
+        if (step.type !== 'select') {
+          if (step.recordData.blobData) {
+            duration += this.$refs[step.name].currentTime
+          }
+        } else {
+          step.rectangleRecord.forEach(rectangleStep => {
+            if (rectangleStep.recordData && rectangleStep.recordData.duration) duration += this.$refs[rectangleStep.name][0].currentTime
+          })
+        }
+      })
+      return duration
     }
   },
   watch: {
@@ -729,13 +760,43 @@ export default {
       this.startable = true
       this.tempData.rewardData = []
     },
-    preview () {
-      if (this.previewState) {
-        console.log('enter review mode')
-      } else {
-        console.log('exit review mode')
-      }
-      this.previewState = !this.previewState
+    openPreviewMode () {
+      this.previewModeState = !this.previewModeState
+    },
+    preview (time) {
+      if (this.stepStart()) return
+      this.clearCanvas(this.taskCanvas)
+      this.previewData.state = !this.previewData.state
+      let waitTime = 0
+      Object.values(this.step).forEach(step => {
+        if (step.type !== 'select') {
+          if (step.recordData.blobData) {
+            if (waitTime < time && waitTime + step.recordData.duration > time) {
+              this.$refs[step.name].currentTime = (time - waitTime) / 1000
+              this.$refs[step.name].play()
+            } else {
+              setTimeout(() => {
+                this.$refs[step.name].play()
+              }, waitTime)
+            }
+            waitTime = waitTime + step.recordData.duration + 500
+          }
+        } else {
+          step.rectangleRecord.forEach(rectangleStep => {
+            if (rectangleStep.recordData && rectangleStep.recordData.duration) {
+              if (waitTime < time && waitTime + rectangleStep.recordData.duration > time) {
+                this.$refs[rectangleStep.name][0].currentTime = (time - waitTime) / 1000
+                this.$refs[rectangleStep.name][0].play()
+              } else {
+                setTimeout(() => {
+                  this.$refs[rectangleStep.name][0].play()
+                }, waitTime)
+              }
+              waitTime = waitTime + rectangleStep.recordData.duration + 500
+            }
+          })
+        }
+      })
     },
     stepStart (event) {
       if (!this.startable) {
@@ -808,6 +869,9 @@ export default {
         message,
         type: 'success'
       })
+    },
+    timeUpdate (event) {
+      this.testa += event.target.currentTime
     }
   },
   destroyed () {
