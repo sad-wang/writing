@@ -64,11 +64,11 @@
               <i class="el-icon-medal rewardIcon" :class="[medalShow ? 'animation' : '']" ></i>
             </div>
           </div>
-          <section class="reward" v-show="!previewState">
-            <el-badge :value="computedReward.trophy" class="item">
+          <section class="reward">
+            <el-badge :value="computedReward.trophy" v-show="computedReward.trophy" class="item">
               <i class="el-icon-trophy-1 rewardIcon"></i>
             </el-badge>
-            <el-badge :value="computedReward.medal" class="item">
+            <el-badge :value="computedReward.medal" v-show="computedReward.medal" class="item">
               <i class="el-icon-medal rewardIcon"></i>
             </el-badge>
           </section>
@@ -318,26 +318,13 @@ export default {
       }
     },
     computedReward () {
-      const recordData = []
-      const steps = [this.step.step1Record, this.step.step2Record, this.step.step3Select, this.step.step3Record, this.step.step4Record, this.step.step4Select]
-      steps.forEach(step => {
-        if (step.type === 'record') recordData.push(step.rewardData)
-        else {
-          step.rectangleRecord.forEach(rectangleData => {
-            recordData.push(rectangleData.rewardData)
-          })
-        }
-      })
-      recordData.push(this.tempData.rewardData)
       const result = {
         medal: 0,
         trophy: 0
       }
-      recordData.forEach(rewardData => {
-        rewardData.forEach(reward => {
-          if (reward.name === 'medal') result.medal++
-          if (reward.name === 'trophy') result.trophy++
-        })
+      this.tempData.rewardData.forEach(reward => {
+        if (reward.name === 'medal') result.medal++
+        if (reward.name === 'trophy') result.trophy++
       })
       return result
     },
@@ -726,10 +713,11 @@ export default {
           if (rewardData.time > event.target.currentTime * 1000) {
             setTimeout(() => {
               if (this.tempData.time === time && !event.target.paused) {
+                this.tempData.rewardData.push(rewardData)
                 this.showReward(rewardData.name)
               }
             }, rewardData.time - event.target.currentTime * 1000)
-          }
+          } else this.tempData.rewardData.push(rewardData)
         })
       })
     },
@@ -740,6 +728,7 @@ export default {
     end () {
       this.rectanglePlay = false
       this.startable = true
+      this.tempData.rewardData = []
     },
     preview () {
       if (this.previewState) {
@@ -949,6 +938,7 @@ export default {
           }
           .reward {
             margin: 10px;
+            height: 55px;
             .item {
               margin: 10px;
               .rewardIcon {
