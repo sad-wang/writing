@@ -415,7 +415,7 @@ export default {
       this.rectangleCanvas.imageWidth = Math.round(Math.abs(rectangleData.end.x - rectangleData.start.x) * this.taskCanvas.image.height / this.taskCanvas.height)
       this.rectangleCanvas.imageHeight = Math.round(Math.abs(rectangleData.end.y - rectangleData.start.y) * this.taskCanvas.image.width / this.taskCanvas.width)
       this.rectangleCanvas.imageLeft = Math.round(this.taskCanvas.image.width * rectangleData.start.x / this.taskCanvas.width)
-      this.rectangleCanvas.imageTop = Math.round(this.taskCanvas.image.height * rectangleData.start.x / this.taskCanvas.height)
+      this.rectangleCanvas.imageTop = Math.round(this.taskCanvas.image.height * rectangleData.start.y / this.taskCanvas.height)
       this.rectangleCanvas.width = this.rectangleCanvas.imageWidth * 2
       this.rectangleCanvas.height = this.rectangleCanvas.imageHeight * 2
     },
