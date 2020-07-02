@@ -89,7 +89,7 @@
                 <el-button @click="record('step1Record')" :loading="step.step1Record.state === 'loading'">{{computedRecordButtonValue(step.step1Record)}}</el-button>
                 <div class="step1Record wave" v-show="!step.step1Record.recordData.blobData"></div>
                 <audio ref="step1Record" controls @play="play($event, step.step1Record)" :src="step.step1Record.recordData.url"
-                       @ended="end"  v-show="step.step1Record.recordData.blobData"></audio>
+                       @ended="end" @pause="pause" v-show="step.step1Record.recordData.blobData"></audio>
               </div>
             </el-collapse-item>
             <el-collapse-item title="步骤二 整体评教" name="step2">
@@ -102,7 +102,7 @@
                 <el-button @click="record('step2Record')" :loading="step.step2Record.state === 'loading'">{{computedRecordButtonValue(step.step2Record)}}</el-button>
                 <div class="step2Record wave" v-show="!step.step2Record.recordData.blobData"></div>
                 <audio ref="step2Record" controls @play="play($event, step.step2Record)" :src="step.step2Record.recordData.url"
-                       @ended="end" v-show="step.step2Record.recordData.blobData"></audio>
+                       @ended="end" @pause="pause" v-show="step.step2Record.recordData.blobData"></audio>
               </div>
             </el-collapse-item>
             <el-collapse-item title="步骤三 评教作业优秀部分" name="step3">
@@ -115,7 +115,7 @@
                 </el-button>
                 <div class="step3Record wave" v-show="!step.step3Record.recordData.blobData"></div>
                 <audio ref="step3Record" controls @play="play($event, step.step3Record, () => drawCircles(step.step3Select.drawData))"
-                       @ended="end" :src="step.step3Record.recordData.url" v-show="step.step3Record.recordData.blobData"></audio>
+                       @ended="end" @pause="pause" :src="step.step3Record.recordData.url" v-show="step.step3Record.recordData.blobData"></audio>
               </div>
               <div class="collapse-item-content" v-show="step.step3Record.recordData.blobData" v-for="(rectangleData, index) in step.step3Select.rectangleRecord" :key="index">
                 <el-tag type="info" class="tag">{{index + 1}}</el-tag>
@@ -125,7 +125,7 @@
                 </el-button>
                 <div class="wave" :class="rectangleData.name" v-show="!rectangleData.recordData.blobData"></div>
                 <audio :ref="rectangleData.name" controls @play="play($event, rectangleData, undefined,() => showRectangleCanvas(step.step3Select, index))"
-                       @ended="end" :src="rectangleData.recordData.url" v-show="rectangleData.recordData.blobData"></audio>
+                       @ended="end" @pause="pause" :src="rectangleData.recordData.url" v-show="rectangleData.recordData.blobData"></audio>
               </div>
             </el-collapse-item>
             <el-collapse-item title="步骤四 评教作业不足部分" name="step4">
@@ -138,7 +138,7 @@
                 </el-button>
                 <div class="step4Record wave" v-show="!step.step4Record.recordData.blobData"></div>
                 <audio ref="step4Record" controls @play="play($event, step.step4Record, () => drawCircles(step.step4Select.drawData))"
-                       @ended="end" :src="step.step4Record.recordData.url" v-show="step.step4Record.recordData.blobData"></audio>
+                       @ended="end" @pause="pause" :src="step.step4Record.recordData.url" v-show="step.step4Record.recordData.blobData"></audio>
               </div>
               <div class="collapse-item-content" v-show="step.step4Record.recordData.blobData" v-for="(rectangleData, index) in step.step4Select.rectangleRecord" :key="index">
                 <el-tag type="info" class="tag">{{index + 1}}</el-tag>
@@ -148,7 +148,7 @@
                 </el-button>
                 <div class="wave" :class="rectangleData.name" v-show="!rectangleData.recordData.blobData"></div>
                 <audio :ref="rectangleData.name" controls @play="play($event, rectangleData, undefined,() => showRectangleCanvas(step.step4Select, index))"
-                       @ended="end" :src="rectangleData.recordData.url" v-show="rectangleData.recordData.blobData"></audio>
+                       @ended="end" @pause="pause" :src="rectangleData.recordData.url" v-show="rectangleData.recordData.blobData"></audio>
               </div>
             </el-collapse-item>
           </el-collapse>
@@ -297,7 +297,8 @@ export default {
       previewPlay: {
         state: false,
         duration: 0.00
-      }
+      },
+      startable: true
     }
   },
   computed: {
@@ -589,11 +590,14 @@ export default {
       if (step.state === 'using') this.endRecord(step, callback, index)
     },
     startRecord (step, callback) {
+      if (this.stepStart()) return
+      this.startable = false
       step.state = 'loading'
       this.initRecordStepData(step)
       this.rec.open(() => this.recordable(step, callback), error => this.disrecordable(error, step))
     },
     endRecord (step) {
+      this.startable = true
       this.recStop()
         .then(res => {
           step.recordData.duration = res.duration
@@ -656,6 +660,8 @@ export default {
       else this.endSelect(step)
     },
     startSelect (step, name) {
+      if (this.stepStart()) return
+      this.startable = false
       this.showNotify(step.tips)
       this.clearCanvas(this.taskCanvas)
       this.currentStep = step
@@ -669,6 +675,7 @@ export default {
       step.rectangleRecord = []
     },
     endSelect (step) {
+      this.startable = true
       this.showSuccessMessage('选取成功')
       this.afterStepFinish(step)
       step.rectangleRecord = step.drawData.map((rectangle, index) => {
@@ -689,7 +696,8 @@ export default {
       })
     },
     play (event, step, drawCircles, showRectangleCanvas) {
-      console.log('...')
+      if (this.stepStart(event)) return
+      this.startable = false
       this.clearCanvas(this.taskCanvas)
       const time = new Date()
       this.tempData.time = time
@@ -725,9 +733,13 @@ export default {
         })
       })
     },
+    pause () {
+      if (!this.startable) return
+      this.startable = true
+    },
     end () {
-      console.log(1111)
       this.rectanglePlay = false
+      this.startable = true
     },
     preview () {
       if (this.previewState) {
@@ -736,6 +748,14 @@ export default {
         console.log('exit review mode')
       }
       this.previewState = !this.previewState
+    },
+    stepStart (event) {
+      if (!this.startable) {
+        this.$message.error('请先结束当前播放或录制')
+        event && event.target.pause()
+        return 1
+      }
+      return 0
     },
     afterStepFinish (step) {
       this.currentStep = {}
