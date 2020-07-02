@@ -722,8 +722,7 @@ export default {
       })
     },
     pause () {
-      if (!this.startable) return
-      this.startable = true
+      this.startable = !this.startable
     },
     end () {
       this.rectanglePlay = false
