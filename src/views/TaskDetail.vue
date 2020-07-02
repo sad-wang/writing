@@ -89,7 +89,7 @@
                 <el-button @click="record('step1Record')" :loading="step.step1Record.state === 'loading'">{{computedRecordButtonValue(step.step1Record)}}</el-button>
                 <div class="step1Record wave" v-show="!step.step1Record.recordData.blobData"></div>
                 <audio ref="step1Record" controls @play="play($event, step.step1Record)" :src="step.step1Record.recordData.url"
-                       @ended="end" @pause="pause" @timeupdate="timeUpdate($event)" v-show="step.step1Record.recordData.blobData"></audio>
+                       @ended="end" @pause="pause" @timeupdate="timeUpdate($event, step.step1Record)" v-show="step.step1Record.recordData.blobData"></audio>
               </div>
             </el-collapse-item>
             <el-collapse-item title="步骤二 整体评教" name="step2">
@@ -102,7 +102,7 @@
                 <el-button @click="record('step2Record')" :loading="step.step2Record.state === 'loading'">{{computedRecordButtonValue(step.step2Record)}}</el-button>
                 <div class="step2Record wave" v-show="!step.step2Record.recordData.blobData"></div>
                 <audio ref="step2Record" controls @play="play($event, step.step2Record)" :src="step.step2Record.recordData.url"
-                       @ended="end" @pause="pause" v-show="step.step2Record.recordData.blobData"></audio>
+                       @ended="end" @pause="pause" @timeupdate="timeUpdate($event, step.step2Record)" v-show="step.step2Record.recordData.blobData"></audio>
               </div>
             </el-collapse-item>
             <el-collapse-item title="步骤三 评教作业优秀部分" name="step3">
@@ -115,7 +115,7 @@
                 </el-button>
                 <div class="step3Record wave" v-show="!step.step3Record.recordData.blobData"></div>
                 <audio ref="step3Record" controls @play="play($event, step.step3Record, () => drawCircles(step.step3Select.drawData))"
-                       @ended="end" @pause="pause" :src="step.step3Record.recordData.url" v-show="step.step3Record.recordData.blobData"></audio>
+                       @ended="end" @pause="pause" @timeupdate="timeUpdate($event, step.step3Record)" :src="step.step3Record.recordData.url" v-show="step.step3Record.recordData.blobData"></audio>
               </div>
               <div class="collapse-item-content" v-show="step.step3Record.recordData.blobData" v-for="(rectangleData, index) in step.step3Select.rectangleRecord" :key="index">
                 <el-tag type="info" class="tag">{{index + 1}}</el-tag>
@@ -125,7 +125,7 @@
                 </el-button>
                 <div class="wave" :class="rectangleData.name" v-show="!rectangleData.recordData.blobData"></div>
                 <audio :ref="rectangleData.name" controls @play="play($event, rectangleData, undefined,() => showRectangleCanvas(step.step3Select, index))"
-                       @ended="end" @pause="pause" :src="rectangleData.recordData.url" v-show="rectangleData.recordData.blobData"></audio>
+                       @ended="end" @pause="pause" @timeupdate="timeUpdate($event, rectangleData)" :src="rectangleData.recordData.url" v-show="rectangleData.recordData.blobData"></audio>
               </div>
             </el-collapse-item>
             <el-collapse-item title="步骤四 评教作业不足部分" name="step4">
@@ -138,7 +138,7 @@
                 </el-button>
                 <div class="step4Record wave" v-show="!step.step4Record.recordData.blobData"></div>
                 <audio ref="step4Record" controls @play="play($event, step.step4Record, () => drawCircles(step.step4Select.drawData))"
-                       @ended="end" @pause="pause" :src="step.step4Record.recordData.url" v-show="step.step4Record.recordData.blobData"></audio>
+                       @ended="end" @pause="pause" @timeupdate="timeUpdate($event, step.step4Record)" :src="step.step4Record.recordData.url" v-show="step.step4Record.recordData.blobData"></audio>
               </div>
               <div class="collapse-item-content" v-show="step.step4Record.recordData.blobData" v-for="(rectangleData, index) in step.step4Select.rectangleRecord" :key="index">
                 <el-tag type="info" class="tag">{{index + 1}}</el-tag>
@@ -148,7 +148,7 @@
                 </el-button>
                 <div class="wave" :class="rectangleData.name" v-show="!rectangleData.recordData.blobData"></div>
                 <audio :ref="rectangleData.name" controls @play="play($event, rectangleData, undefined,() => showRectangleCanvas(step.step4Select, index))"
-                       @ended="end" @pause="pause" :src="rectangleData.recordData.url" v-show="rectangleData.recordData.blobData"></audio>
+                       @ended="end" @pause="pause" @timeupdate="timeUpdate($event, rectangleData)" :src="rectangleData.recordData.url" v-show="rectangleData.recordData.blobData"></audio>
               </div>
             </el-collapse-item>
           </el-collapse>
@@ -210,7 +210,8 @@ export default {
           recordData: {
             blobData: null,
             url: null,
-            duration: null
+            duration: null,
+            currentTime: 0
           },
           drawData: [],
           rewardData: [],
@@ -223,7 +224,8 @@ export default {
           recordData: {
             blobData: null,
             url: null,
-            duration: null
+            duration: null,
+            currentTime: 0
           },
           rewardData: [],
           totalScore: null,
@@ -237,7 +239,8 @@ export default {
           recordData: {
             blobData: null,
             url: null,
-            duration: null
+            duration: null,
+            currentTime: 0
           },
           rewardData: [],
           drawData: [],
@@ -259,7 +262,8 @@ export default {
           recordData: {
             blobData: null,
             url: null,
-            duration: null
+            duration: null,
+            currentTime: 0
           },
           rewardData: [],
           drawData: [],
@@ -352,11 +356,11 @@ export default {
       Object.values(this.step).forEach(step => {
         if (step.type !== 'select') {
           if (step.recordData.blobData) {
-            duration += this.$refs[step.name].currentTime
+            duration = step.recordData.currentTime
           }
         } else {
           step.rectangleRecord.forEach(rectangleStep => {
-            if (rectangleStep.recordData && rectangleStep.recordData.duration) duration += this.$refs[rectangleStep.name][0].currentTime
+            if (rectangleStep.recordData && rectangleStep.recordData.duration) duration = rectangleStep.recordData.currentTime
           })
         }
       })
@@ -399,7 +403,7 @@ export default {
       taskCanvas.image.src = this.courseData.homeworkImageURL
       taskCanvas.image.onload = () => {
         taskCanvas.width = 480
-        taskCanvas.height = taskCanvas.image.height * 480 / taskCanvas.width
+        taskCanvas.height = taskCanvas.image.height * 480 / taskCanvas.image.width
         this.$nextTick(() => {
           taskCanvas.context.drawImage(taskCanvas.image, 0, 0, taskCanvas.width, taskCanvas.height)
           this.loading = false
@@ -524,7 +528,7 @@ export default {
     drawLine (context, start, end, color) {
       context.beginPath()
       context.strokeStyle = color
-      context.lineWidth = 2
+      context.lineWidth = 4
       context.moveTo(start.x, start.y)
       context.lineTo(end.x, end.y)
       context.stroke()
@@ -545,7 +549,7 @@ export default {
     drawRectangle (context, start, end, color) {
       context.beginPath()
       context.strokeStyle = color
-      context.lineWidth = 1.5
+      context.lineWidth = 4
       context.moveTo(start.x, start.y)
       context.lineTo(start.x, end.y)
       context.lineTo(end.x, end.y)
@@ -705,7 +709,8 @@ export default {
           recordData: {
             blobData: null,
             url: null,
-            duration: null
+            duration: null,
+            currentTime: 0
           },
           rewardData: [],
           drawData: [],
@@ -871,8 +876,8 @@ export default {
         type: 'success'
       })
     },
-    timeUpdate (event) {
-      this.testa += event.target.currentTime
+    timeUpdate (event, step) {
+      step.recordData.currentTime = event.target.currentTime
     }
   },
   destroyed () {
