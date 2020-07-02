@@ -717,7 +717,7 @@ export default {
         step.rewardData.forEach(rewardData => {
           if (rewardData.time > event.target.currentTime * 1000) {
             setTimeout(() => {
-              if (!event.target.paused) {
+              if (this.tempData.time === time && !event.target.paused) {
                 this.showReward(rewardData.name)
               }
             }, rewardData.time - event.target.currentTime * 1000)
