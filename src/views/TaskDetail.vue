@@ -816,6 +816,7 @@ export default {
       this.processStack = []
     },
     deleteRectangle (step, index) {
+      if (this.stepStart()) return
       step.rectangleRecord = step.rectangleRecord.filter((rectangleData, i) => {
         return i !== index
       })
