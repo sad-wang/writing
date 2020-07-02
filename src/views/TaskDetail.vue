@@ -7,7 +7,6 @@
         <span class="section">{{courseData.courseTitle}} </span>
         <span class="section">{{courseData.chapterTitle}}</span>
         <div class="button-wrapper">
-          <el-button>预览<i class="el-icon-view"></i></el-button>
           <el-button>上墙<i class="el-icon-finished"></i></el-button>
           <el-button>评教下一个<i class="el-icon-arrow-right"></i></el-button>
           <el-button>完成评教<i class="el-icon-finished"></i></el-button>
@@ -19,7 +18,10 @@
       </el-card>
       <div class="main">
         <el-card class="reviewArea" shadow="hover">
-          <div slot="header">评教区</div>
+          <div slot="header" class="card-header">
+            <div class="title">评教区</div>
+            <el-button @click="preview">{{previewState ? '退出预览' : '预览模式'}}<i class="el-icon-view"></i></el-button>
+          </div>
           <transition name="el-zoom-in-top">
             <div class="toolArea" v-show="Object.keys(currentStep).length">
               <section v-show="Object.keys(currentStep).length && currentStep.type !== 'select'">
@@ -62,7 +64,7 @@
               <i class="el-icon-medal rewardIcon" :class="[medalShow ? 'animation' : '']" ></i>
             </div>
           </div>
-          <section class="reward">
+          <section class="reward" v-show="!previewState">
             <el-badge :value="computedReward.trophy" class="item">
               <i class="el-icon-trophy-1 rewardIcon"></i>
             </el-badge>
@@ -70,20 +72,23 @@
               <i class="el-icon-medal rewardIcon"></i>
             </el-badge>
           </section>
-          <section class="player">
+          <section class="player" v-show="previewState">
             <i class="el-icon-video-play icon"></i>
             <div class="duration">0:00 / 0:00</div>
             <el-slider v-model="test" :show-tooltip="false" class="slider"></el-slider>
           </section>
         </el-card>
         <el-card class="reviewProcess" shadow="hover">
-          <div slot="header">评教流程</div>
+          <div slot="header" class="card-header">
+            <div class="title">评教流程</div>
+            <el-button>保存<i class="el-icon-view"></i></el-button>
+          </div>
           <el-collapse class="collapse" v-model="collapseList">
             <el-collapse-item title="步骤一 简单介绍和问候" name="step1">
               <div class="collapse-item-content">
                 <el-button @click="record('step1Record')" :loading="step.step1Record.state === 'loading'">{{computedRecordButtonValue(step.step1Record)}}</el-button>
                 <div class="step1Record wave" v-show="!step.step1Record.recordData.blobData"></div>
-                <audio ref="step1Record" controls @play="play($event, step.step1Record)" :src="blobToUrl(step.step1Record.recordData.blobData)"
+                <audio ref="step1Record" controls @play="play($event, step.step1Record)" :src="step.step1Record.recordData.url"
                        @ended="end"  v-show="step.step1Record.recordData.blobData"></audio>
               </div>
             </el-collapse-item>
@@ -96,7 +101,7 @@
               <div class="collapse-item-content">
                 <el-button @click="record('step2Record')" :loading="step.step2Record.state === 'loading'">{{computedRecordButtonValue(step.step2Record)}}</el-button>
                 <div class="step2Record wave" v-show="!step.step2Record.recordData.blobData"></div>
-                <audio ref="step2Record" controls @play="play($event, step.step2Record)" :src="blobToUrl(step.step2Record.recordData.blobData)"
+                <audio ref="step2Record" controls @play="play($event, step.step2Record)" :src="step.step2Record.recordData.url"
                        @ended="end" v-show="step.step2Record.recordData.blobData"></audio>
               </div>
             </el-collapse-item>
@@ -110,7 +115,7 @@
                 </el-button>
                 <div class="step3Record wave" v-show="!step.step3Record.recordData.blobData"></div>
                 <audio ref="step3Record" controls @play="play($event, step.step3Record, () => drawCircles(step.step3Select.drawData))"
-                       @ended="end" :src="blobToUrl(step.step3Record.recordData.blobData)" v-show="step.step3Record.recordData.blobData"></audio>
+                       @ended="end" :src="step.step3Record.recordData.url" v-show="step.step3Record.recordData.blobData"></audio>
               </div>
               <div class="collapse-item-content" v-show="step.step3Record.recordData.blobData" v-for="(rectangleData, index) in step.step3Select.rectangleRecord" :key="index">
                 <el-tag type="info" class="tag">{{index + 1}}</el-tag>
@@ -120,7 +125,7 @@
                 </el-button>
                 <div class="wave" :class="rectangleData.name" v-show="!rectangleData.recordData.blobData"></div>
                 <audio :ref="rectangleData.name" controls @play="play($event, rectangleData, undefined,() => showRectangleCanvas(step.step3Select, index))"
-                       @ended="end" :src="blobToUrl(rectangleData.recordData.blobData)" v-show="rectangleData.recordData.blobData"></audio>
+                       @ended="end" :src="rectangleData.recordData.url" v-show="rectangleData.recordData.blobData"></audio>
               </div>
             </el-collapse-item>
             <el-collapse-item title="步骤四 评教作业不足部分" name="step4">
@@ -131,9 +136,9 @@
                 <el-button @click="record('step4Record', () => drawCircles(step.step4Select.drawData))" :loading="step.step4Record.state === 'loading'">
                   {{computedRecordButtonValue(step.step4Record)}}
                 </el-button>
-                <div class="step3Record wave" v-show="!step.step4Record.recordData.blobData"></div>
+                <div class="step4Record wave" v-show="!step.step4Record.recordData.blobData"></div>
                 <audio ref="step4Record" controls @play="play($event, step.step4Record, () => drawCircles(step.step4Select.drawData))"
-                       @ended="end" :src="blobToUrl(step.step4Record.recordData.blobData)" v-show="step.step4Record.recordData.blobData"></audio>
+                       @ended="end" :src="step.step4Record.recordData.url" v-show="step.step4Record.recordData.blobData"></audio>
               </div>
               <div class="collapse-item-content" v-show="step.step4Record.recordData.blobData" v-for="(rectangleData, index) in step.step4Select.rectangleRecord" :key="index">
                 <el-tag type="info" class="tag">{{index + 1}}</el-tag>
@@ -143,7 +148,7 @@
                 </el-button>
                 <div class="wave" :class="rectangleData.name" v-show="!rectangleData.recordData.blobData"></div>
                 <audio :ref="rectangleData.name" controls @play="play($event, rectangleData, undefined,() => showRectangleCanvas(step.step4Select, index))"
-                       @ended="end" :src="blobToUrl(rectangleData.recordData.blobData)" v-show="rectangleData.recordData.blobData"></audio>
+                       @ended="end" :src="rectangleData.recordData.url" v-show="rectangleData.recordData.blobData"></audio>
               </div>
             </el-collapse-item>
           </el-collapse>
@@ -203,6 +208,7 @@ export default {
           state: 'usable', // 'usable' || 'loading' || 'using' || 'counting'
           recordData: {
             blobData: null,
+            url: null,
             duration: null
           },
           drawData: [],
@@ -215,6 +221,7 @@ export default {
           state: 'usable', // 'usable' || 'loading' || 'using' || 'counting'
           recordData: {
             blobData: null,
+            url: null,
             duration: null
           },
           rewardData: [],
@@ -237,6 +244,7 @@ export default {
           state: 'usable', // 'usable' || 'loading' || 'using' || 'counting'
           recordData: {
             blobData: null,
+            url: null,
             duration: null
           },
           rewardData: [],
@@ -258,6 +266,7 @@ export default {
           state: 'usable', // 'usable' || 'loading' || 'using' || 'counting'
           recordData: {
             blobData: null,
+            url: null,
             duration: null
           },
           rewardData: [],
@@ -283,7 +292,12 @@ export default {
         position: {},
         time: null
       },
-      rectanglePlay: false
+      rectanglePlay: false,
+      previewState: false,
+      previewPlay: {
+        state: false,
+        duration: 0.00
+      }
     }
   },
   computed: {
@@ -399,6 +413,8 @@ export default {
     initRecordStepData (step) {
       this.initRecorder()
       step.recordData.blobData = null
+      if (step.rewardData.url) (window.URL || window.webkitURL).revokeObjectURL(step.rewardData.url)
+      step.rewardData.url = null
       step.recordData.duration = null
       step.drawData = []
       step.rewardData = []
@@ -582,6 +598,7 @@ export default {
         .then(res => {
           step.recordData.duration = res.duration
           step.recordData.blobData = res.blob
+          step.recordData.url = (window.URL || window.webkitURL).createObjectURL(res.blob)
           this.showSuccessMessage('录制成功')
         }, error => this.$message.error('录制失败' + error))
         .then(() => this.afterStepFinish(step))
@@ -646,6 +663,9 @@ export default {
       this.initRecordStepData(this.step[name])
       step.state = 'using'
       step.drawData = []
+      step.rectangleRecord.forEach(r => {
+        if (r.recordData.url) (window.URL || window.webkitURL).revokeObjectURL(r.recordData.url)
+      })
       step.rectangleRecord = []
     },
     endSelect (step) {
@@ -659,6 +679,7 @@ export default {
           state: 'usable',
           recordData: {
             blobData: null,
+            url: null,
             duration: null
           },
           rewardData: [],
@@ -668,6 +689,7 @@ export default {
       })
     },
     play (event, step, drawCircles, showRectangleCanvas) {
+      console.log('...')
       this.clearCanvas(this.taskCanvas)
       const time = new Date()
       this.tempData.time = time
@@ -706,6 +728,14 @@ export default {
     end () {
       console.log(1111)
       this.rectanglePlay = false
+    },
+    preview () {
+      if (this.previewState) {
+        console.log('enter review mode')
+      } else {
+        console.log('exit review mode')
+      }
+      this.previewState = !this.previewState
     },
     afterStepFinish (step) {
       this.currentStep = {}
@@ -748,9 +778,6 @@ export default {
         }
       }
     },
-    blobToUrl (blob) {
-      return blob ? (window.URL || window.webkitURL).createObjectURL(blob) : ''
-    },
     showNotify (message) {
       this.$notify.closeAll()
       this.$notify({
@@ -774,6 +801,8 @@ export default {
         type: 'success'
       })
     }
+  },
+  destroyed () {
   }
 }
 </script>
@@ -917,7 +946,7 @@ export default {
           }
           .player {
             box-sizing: border-box;
-            margin: 0 10px;
+            margin: 10px;
             width: 480px;
             border-radius: 25px;
             background-color: #f1f3f4;
@@ -930,7 +959,7 @@ export default {
               font-size: 30px;
             }
             .duration {
-              padding: 0 10px;
+              padding: 0 15px 0 5px;
             }
             .slider {
               flex: 1;
@@ -967,6 +996,13 @@ export default {
           }
         }
       }
+    }
+  }
+  .card-header {
+    display: flex;
+    flex-direction: row;
+    .title {
+      flex: 1;
     }
   }
   .wave {
