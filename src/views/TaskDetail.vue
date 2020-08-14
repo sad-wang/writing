@@ -1,40 +1,37 @@
 <template>
   <div class="taskDetail">
+    <div style="font-family: handwritting;color: white">.</div>
     <el-card class="box-card" v-loading="loading" >
       <div slot="header" class="header">
-        <span class="section title">作业评教</span>
-        <span class="section">学生姓名：{{courseData.studentName}}</span>
-        <span class="section">{{courseData.courseTitle}} </span>
-        <span class="section">{{courseData.chapterTitle}}</span>
+        <div @click="copyToClip">
+          <span class="section title">作业评教</span>
+          <span class="section">{{worksData.schoolName}}</span>
+          <span class="section">{{worksData.gradeName + worksData.className}}</span>
+          <span class="section">{{worksData.userName}}</span>
+          <span class="section">{{worksData.title}} </span>
+        </div>
         <div class="button-wrapper">
-          <el-button>上墙<i class="el-icon-finished"></i></el-button>
-          <el-button>评教下一个<i class="el-icon-arrow-right"></i></el-button>
-          <el-button>完成评教<i class="el-icon-finished"></i></el-button>
+          <el-button v-if="false">评教下一个<i class="el-icon-arrow-right"></i></el-button>
+          <el-button @click="finishRevise">完成评教<i class="el-icon-finished"></i></el-button>
         </div>
       </div>
       <el-card shadow="hover" class="homeworkContent">
         <div slot="header">作业内容</div>
-        <span>{{courseData.homeworkContent}}</span>
+        <span>{{worksData.content}}</span>
       </el-card>
       <div class="main">
         <el-card class="reviewArea" shadow="hover">
           <div slot="header" class="card-header">
             <div class="title">评教区</div>
-            <el-button @click="preview(0)">{{previewModeState ? '退出预览' : '预览模式'}}<i class="el-icon-view"></i></el-button>
           </div>
           <transition name="el-zoom-in-top">
-            <div class="toolArea" v-show="Object.keys(currentStep).length">
-              <section v-show="Object.keys(currentStep).length && currentStep.type !== 'select'">
+            <div class="toolArea" >
+              <section v-if="false">
                 <div class="title">颜色：</div>
                 <div class="item red" :class="{selected: color === 'red'}" @click="changeColor('red')"></div>
                 <div class="item green" :class="{selected: color === '#40bf40'}" @click="changeColor('#40bf40')"></div>
               </section>
-              <section v-show="Object.keys(currentStep).length && currentStep.type !== 'select'">
-                <div class="title">奖励：</div>
-                  <i class="el-icon-trophy-1 item rewardIcon" @click="addReward('trophy')"></i>
-                  <i class="el-icon-medal item rewardIcon" @click="addReward('medal')"></i>
-              </section>
-              <section v-show="Object.keys(currentStep).length">
+              <section>
                 <div class="title">撤回：</div>
                 <i class="el-icon-back item backIcon" @click="withdraw"></i>
               </section>
@@ -49,109 +46,40 @@
                     @mouseup="canvasMouseUp($event, taskCanvas)"
                     @mouseleave="canvasMouseUp($event, taskCanvas)">
             </canvas>
-            <canvas ref="rectangleCanvas"
-                    :width="rectangleCanvas.width"
-                    :height="rectangleCanvas.height"
-                    @mousedown="canvasMouseDown($event, rectangleCanvas)"
-                    @mousemove="canvasMouseMove($event, rectangleCanvas)"
-                    @mouseup="canvasMouseUp($event, rectangleCanvas)"
-                    @mouseleave="canvasMouseUp($event, rectangleCanvas)"
-                    class="rectangleCanvas"
-                    v-show="currentStep.type === 'rectangleRecord' || rectanglePlay">
-            </canvas>
-            <div class="shake">
-              <i class="el-icon-trophy-1 rewardIcon" :class="[trophyShow ? 'animation' : '']" ></i>
-              <i class="el-icon-medal rewardIcon" :class="[medalShow ? 'animation' : '']" ></i>
-            </div>
           </div>
-          <section class="reward">
-            <el-badge :value="computedReward.trophy" v-show="computedReward.trophy" class="item">
-              <i class="el-icon-trophy-1 rewardIcon"></i>
-            </el-badge>
-            <el-badge :value="computedReward.medal" v-show="computedReward.medal" class="item">
-              <i class="el-icon-medal rewardIcon"></i>
-            </el-badge>
-          </section>
-          <section class="player" v-show="previewModeState">
-            <i class="icon" @click="preview(2000)" :class="previewData.state ? 'el-icon-video-pause' : 'el-icon-video-play'"></i>
-            <div class="duration">{{computedCurrentDuration}} / {{computedReviewDuration}}</div>
-            <el-slider v-model="test" :show-tooltip="false" class="slider"></el-slider>
-          </section>
         </el-card>
         <el-card class="reviewProcess" shadow="hover">
           <div slot="header" class="card-header">
             <div class="title">评教流程</div>
-            <el-button>保存<i class="el-icon-view"></i></el-button>
+            <el-button v-if="false">保存<i class="el-icon-view"></i></el-button>
+            <el-button @click="deleteWorks">删除作业</el-button>
           </div>
-          <el-collapse class="collapse" v-model="collapseList">
-            <el-collapse-item title="步骤一 简单介绍和问候" name="step1">
-              <div class="collapse-item-content">
-                <el-button @click="record('step1Record')" :loading="step.step1Record.state === 'loading'">{{computedRecordButtonValue(step.step1Record)}}</el-button>
-                <div class="step1Record wave" v-show="!step.step1Record.recordData.blobData"></div>
-                <audio ref="step1Record" controls @play="play($event, step.step1Record)" :src="step.step1Record.recordData.url"
-                       @ended="end" @pause="pause" @timeupdate="timeUpdate($event, step.step1Record)" v-show="step.step1Record.recordData.blobData"></audio>
+          <div class="title">步骤一 输入字并勾选对应字图片</div>
+          <div class="content">
+            <div v-for="(item, index) in characters" v-bind:key="index">
+              {{index+1}}
+              <el-input v-model="item.id" class="totalScore"></el-input>
+              <el-button @click="selectCharacter(item)">{{item.state ? item.images.length ? '重新选取' : '开始选取' : '完成选取'}}</el-button>
+              <i class="el-icon-delete deleteIcon" @click="deleteCharacter(index)"></i>
+              <div class="images">
+                <div class="item" v-for="(image, index) in item.images" v-bind:key="index">
+                    <img :src="image.url" class="character">
+                    <el-input type="number" v-model="image.score" class="totalScore"></el-input>分
+                </div>
               </div>
-            </el-collapse-item>
-            <el-collapse-item title="步骤二 整体评教" name="step2">
-              <div class="collapse-item-content">
-                整体分数：
-                <el-input placeholder="0-100" v-model="step.step2Record.totalScore" class="totalScore"></el-input>
-                <span>分</span>
+            </div>
+            <el-button @click="addCharacter">添加字</el-button>
+          </div>
+          <div class="title">步骤二 生成分数及批改痕迹</div>
+          <div class="content">
+            <el-button @click="generateTrack">生成</el-button>
+            <div v-if="scoreDataPanelState">
+              整体分数： {{totalScore}}
+              <div v-for="(item, index) in characters" v-bind:key="index">
+                {{index+1}}. {{item.id}} 平均分 {{item.score}}分
               </div>
-              <div class="collapse-item-content">
-                <el-button @click="record('step2Record')" :loading="step.step2Record.state === 'loading'">{{computedRecordButtonValue(step.step2Record)}}</el-button>
-                <div class="step2Record wave" v-show="!step.step2Record.recordData.blobData"></div>
-                <audio ref="step2Record" controls @play="play($event, step.step2Record)" :src="step.step2Record.recordData.url"
-                       @ended="end" @pause="pause" @timeupdate="timeUpdate($event, step.step2Record)" v-show="step.step2Record.recordData.blobData"></audio>
-              </div>
-            </el-collapse-item>
-            <el-collapse-item title="步骤三 评教作业优秀部分" name="step3">
-              <div class="collapse-item-content">
-                <el-button @click="select('step3Select', 'step3Record')">{{computedSelectButtonValue(step.step3Select)}}</el-button>
-              </div>
-              <div class="collapse-item-content" v-show="step.step3Select.drawData.length">
-                <el-button @click="record('step3Record', () => drawCircles(step.step3Select.drawData))" :loading="step.step3Record.state === 'loading'">
-                  {{computedRecordButtonValue(step.step3Record)}}
-                </el-button>
-                <div class="step3Record wave" v-show="!step.step3Record.recordData.blobData"></div>
-                <audio ref="step3Record" controls @play="play($event, step.step3Record, () => drawCircles(step.step3Select.drawData))"
-                       @ended="end" @pause="pause" @timeupdate="timeUpdate($event, step.step3Record)" :src="step.step3Record.recordData.url" v-show="step.step3Record.recordData.blobData"></audio>
-              </div>
-              <div class="collapse-item-content" v-show="step.step3Record.recordData.blobData" v-for="(rectangleData, index) in step.step3Select.rectangleRecord" :key="index">
-                <el-tag type="info" class="tag">{{index + 1}}</el-tag>
-                <el-tag type="danger" class="tag" style="cursor: pointer" @click="deleteRectangle(step.step3Select, index)"><i class="el-icon-delete"></i></el-tag>
-                <el-button @click="record('step3Select', () => showRectangleCanvas(step.step3Select, index), index)" :loading="rectangleData.state === 'loading'">
-                  {{computedRecordButtonValue(rectangleData)}}
-                </el-button>
-                <div class="wave" :class="rectangleData.name" v-show="!rectangleData.recordData.blobData"></div>
-                <audio :ref="rectangleData.name" controls @play="play($event, rectangleData, undefined,() => showRectangleCanvas(step.step3Select, index))"
-                       @ended="end" @pause="pause" @timeupdate="timeUpdate($event, rectangleData)" :src="rectangleData.recordData.url" v-show="rectangleData.recordData.blobData"></audio>
-              </div>
-            </el-collapse-item>
-            <el-collapse-item title="步骤四 评教作业不足部分" name="step4">
-              <div class="collapse-item-content">
-                <el-button @click="select('step4Select', 'step4Record')">{{computedSelectButtonValue(step.step4Select)}}</el-button>
-              </div>
-              <div class="collapse-item-content" v-show="step.step4Select.drawData.length">
-                <el-button @click="record('step4Record', () => drawCircles(step.step4Select.drawData))" :loading="step.step4Record.state === 'loading'">
-                  {{computedRecordButtonValue(step.step4Record)}}
-                </el-button>
-                <div class="step4Record wave" v-show="!step.step4Record.recordData.blobData"></div>
-                <audio ref="step4Record" controls @play="play($event, step.step4Record, () => drawCircles(step.step4Select.drawData))"
-                       @ended="end" @pause="pause" @timeupdate="timeUpdate($event, step.step4Record)" :src="step.step4Record.recordData.url" v-show="step.step4Record.recordData.blobData"></audio>
-              </div>
-              <div class="collapse-item-content" v-show="step.step4Record.recordData.blobData" v-for="(rectangleData, index) in step.step4Select.rectangleRecord" :key="index">
-                <el-tag type="info" class="tag">{{index + 1}}</el-tag>
-                <el-tag type="danger" class="tag" style="cursor: pointer" @click="deleteRectangle(step.step4Select, index)"><i class="el-icon-delete"></i></el-tag>
-                <el-button @click="record('step4Select', () => showRectangleCanvas(step.step4Select, index), index)" :loading="rectangleData.state === 'loading'">
-                  {{computedRecordButtonValue(rectangleData)}}
-                </el-button>
-                <div class="wave" :class="rectangleData.name" v-show="!rectangleData.recordData.blobData"></div>
-                <audio :ref="rectangleData.name" controls @play="play($event, rectangleData, undefined,() => showRectangleCanvas(step.step4Select, index))"
-                       @ended="end" @pause="pause" @timeupdate="timeUpdate($event, rectangleData)" :src="rectangleData.recordData.url" v-show="rectangleData.recordData.blobData"></audio>
-              </div>
-            </el-collapse-item>
-          </el-collapse>
+            </div>
+          </div>
         </el-card>
       </div>
     </el-card>
@@ -161,24 +89,19 @@
 <script>
 import tcb from 'tcb-js-sdk'
 import router from '../router'
-import Recorder from 'recorder-core'
-import 'recorder-core/src/engine/mp3'
-import 'recorder-core/src/engine/mp3-engine'
-import 'recorder-core/src/extensions/waveview'
+import canvs2Image from '../lib/canvas2Image'
 
 export default {
   name: 'TaskDetail',
   data () {
     return {
-      test: 100,
-      testa: 0,
-      courseData: {
-        taskID: null,
+      worksData: {
+        worksID: null,
         studentName: null,
         courseTitle: null,
         chapterTitle: null,
         homeworkContent: null,
-        homeworkImageURL: null,
+        works_url: null,
         state: null,
         reviewData: null,
         recommend: null
@@ -189,105 +112,19 @@ export default {
         image: null,
         width: null,
         height: null,
-        drawable: null
+        drawable: null,
+        state: ''
       },
       rectangleCanvas: {
-        name: 'rectangleCanvas',
-        context: null,
+        image: null,
         imageWidth: null,
         imageHeight: null,
         imageLeft: null,
         imageTop: null,
         width: null,
-        height: null,
-        drawable: null
-      },
-      step: {
-        step1Record: {
-          name: 'step1Record',
-          type: 'record',
-          state: 'usable', // 'usable' || 'loading' || 'using' || 'counting'
-          recordData: {
-            blobData: null,
-            url: null,
-            duration: null,
-            currentTime: 0
-          },
-          drawData: [],
-          rewardData: [],
-          tips: '步骤一简单介绍和问候提示简单介绍和问候提示简单介绍和问候提示简单介绍和问候提示'
-        },
-        step2Record: {
-          name: 'step2Record',
-          type: 'record',
-          state: 'usable', // 'usable' || 'loading' || 'using' || 'counting'
-          recordData: {
-            blobData: null,
-            url: null,
-            duration: null,
-            currentTime: 0
-          },
-          rewardData: [],
-          totalScore: null,
-          drawData: [],
-          tips: '步骤二整体评价提示整体评价提示整体评价提示整体评价提示整体评价提示整体评价提示'
-        },
-        step3Record: {
-          name: 'step3Record',
-          type: 'record',
-          state: 'usable', // 'usable' || 'loading' || 'using' || 'counting'
-          recordData: {
-            blobData: null,
-            url: null,
-            duration: null,
-            currentTime: 0
-          },
-          rewardData: [],
-          drawData: [],
-          tips: '步骤三优秀部分整体评教步骤三优秀部分整体评教步骤三优秀部分整体评教步骤三优秀部'
-        },
-        step3Select: {
-          name: 'step3Select',
-          type: 'select',
-          state: 'usable', // 'usable' || 'using'
-          drawData: [],
-          tips: '步骤三选取优秀的字选取优秀的字选取优秀的字选取优秀的字选取优秀的字选取优秀的字',
-          color: '#40bf40',
-          rectangleRecord: []
-        },
-        step4Record: {
-          name: 'step4Record',
-          type: 'record',
-          state: 'usable', // 'usable' || 'loading' || 'using' || 'counting'
-          recordData: {
-            blobData: null,
-            url: null,
-            duration: null,
-            currentTime: 0
-          },
-          rewardData: [],
-          drawData: [],
-          tips: '步骤四优秀部分整体评教步骤三优秀部分整体评教步骤三优秀部分整体评教步骤三优秀部'
-        },
-        step4Select: {
-          name: 'step4Select',
-          type: 'select',
-          state: 'usable', // 'usable' || 'using'
-          drawData: [],
-          tips: '步骤四选取优秀的字选取优秀的字选取优秀的字选取优秀的字选取优秀的字选取优秀的字',
-          color: 'red',
-          rectangleRecord: []
-        }
+        height: null
       },
       loading: null,
-      rec: null,
-      wave: {},
-      color: 'red',
-      currentStep: {},
-      trophyShow: false,
-      medalShow: false,
-      collapseList: [],
-      processStack: [], // stroke || reward || rectangle
       tempData: {
         count: null,
         drawData: [],
@@ -297,110 +134,52 @@ export default {
         position: {},
         time: null
       },
-      rectanglePlay: false,
-      previewModeState: false,
-      previewData: {
-        state: false,
-        currentDuration: 0.00,
-        duration: 0.00
-      },
-      startable: true
-    }
-  },
-  computed: {
-    computedRecordButtonValue () {
-      return (step) => {
-        let buttonValue = ''
-        if (step.state === 'usable' && !step.recordData.blobData) buttonValue = '开始录制'
-        if (step.state === 'usable' && step.recordData.blobData) buttonValue = '重新录制'
-        if (step.state === 'using') buttonValue = '结束录制'
-        if (step.state === 'counting') buttonValue = this.tempData.count === 0 ? '开始录制' : this.tempData.count
-        return buttonValue
-      }
-    },
-    computedSelectButtonValue () {
-      return (step) => {
-        return step.state === 'usable' ? step.drawData.length ? '重新选取' : '开始选取' : '结束选取'
-      }
-    },
-    computedReward () {
-      const result = {
-        medal: 0,
-        trophy: 0
-      }
-      this.tempData.rewardData.forEach(reward => {
-        if (reward.name === 'medal') result.medal++
-        if (reward.name === 'trophy') result.trophy++
-      })
-      return result
-    },
-    currentCanvas () {
-      return this.currentStep && this.currentStep.type === 'rectangleRecord' ? 'rectangleCanvas' : this.currentStep ? 'taskCanvas' : null
-    },
-    computedReviewDuration () {
-      let duration = 0
-      Object.values(this.step).forEach(step => {
-        if (step.type !== 'select') {
-          if (step.recordData.duration) duration += step.recordData.duration
-        } else {
-          step.rectangleRecord.forEach(rectangleStep => {
-            if (rectangleStep.recordData && rectangleStep.recordData.duration) duration += rectangleStep.recordData.duration
-          })
-        }
-      })
-      duration = duration ? `${Math.floor(duration / 60000)}: ${Math.floor(duration % 60000 / 1000 / 10)}${Math.floor(duration % 60000 / 1000 % 10)}` : '0:00'
-      return duration
-    },
-    computedCurrentDuration () {
-      let duration = 0
-      Object.values(this.step).forEach(step => {
-        if (step.type !== 'select') {
-          if (step.recordData.blobData) {
-            duration = step.recordData.currentTime
-          }
-        } else {
-          step.rectangleRecord.forEach(rectangleStep => {
-            if (rectangleStep.recordData && rectangleStep.recordData.duration) duration = rectangleStep.recordData.currentTime
-          })
-        }
-      })
-      return duration
-    }
-  },
-  watch: {
-    step: {
-      handler () {
-        let step3Finish = this.step.step3Select.rectangleRecord.length
-        this.step.step3Select.rectangleRecord.map(rectangleData => {
-          step3Finish = step3Finish && rectangleData.recordData.blobData
-        })
-        if (this.step.step1Record.recordData.blobData) this.collapseList.push('step2')
-        if (this.step.step2Record.recordData.blobData) this.collapseList.push('step3')
-        if (step3Finish) this.collapseList.push('step4')
-      },
-      deep: true
+      characters: [],
+      processStack: [],
+      color: 'red',
+      totalScore: 0,
+      scoreData: {},
+      scoreDataPanelState: false
     }
   },
   mounted () {
     this.init()
   },
   methods: {
+    async init () {
+      this.initRouter()
+      this.initCloudAPP()
+      await this.getTaskDetail()
+      this.taskCanvas.context = this.$refs.taskCanvas.getContext('2d')
+      this.initTaskCanvas()
+    },
     initRouter () {
-      if (!this.$route.query.taskID) {
+      if (!this.$route.query.worksID) {
         router.push({
           name: 'Login'
         })
-      } else this.courseData.taskID = this.$route.query.taskID
+      } else this.worksData.worksID = this.$route.query.worksID
     },
     initCloudAPP () {
       this.cloudAPP = tcb.init({ env: 'happy-writing-env-id' })
+      this.cloudAPP.auth()
+    },
+    async getTaskDetail () {
+      this.loading = true
+      const getWorksDetail = await this.cloudAPP.callFunction({
+        name: 'getWorksDetail',
+        data: { worksID: this.worksData.worksID }
+      })
+      this.loading = false
+      Object.assign(this.worksData, getWorksDetail.result.works)
+      this.characters = this.worksData.correct_data.characters ? this.worksData.correct_data.characters : []
     },
     initTaskCanvas () {
       this.loading = true
       const taskCanvas = this.taskCanvas
-      taskCanvas.context = this.$refs.taskCanvas.getContext('2d')
       taskCanvas.image = new Image()
-      taskCanvas.image.src = this.courseData.homeworkImageURL
+      taskCanvas.image.setAttribute('crossOrigin', 'anonymous')
+      taskCanvas.image.src = this.worksData.works_url
       taskCanvas.image.onload = () => {
         taskCanvas.width = 480
         taskCanvas.height = taskCanvas.image.height * 480 / taskCanvas.image.width
@@ -412,7 +191,6 @@ export default {
     },
     initRectangleCanvas () {
       const rectangleCanvas = this.rectangleCanvas
-      rectangleCanvas.context = this.$refs.rectangleCanvas.getContext('2d')
       rectangleCanvas.context.drawImage(this.taskCanvas.image, rectangleCanvas.imageLeft, rectangleCanvas.imageTop, rectangleCanvas.imageWidth, rectangleCanvas.imageHeight, 0, 0, rectangleCanvas.width, rectangleCanvas.height)
     },
     convertImage (rectangleData) {
@@ -420,86 +198,47 @@ export default {
       this.rectangleCanvas.imageHeight = Math.round(Math.abs(rectangleData.end.y - rectangleData.start.y) * this.taskCanvas.image.width / this.taskCanvas.width)
       this.rectangleCanvas.imageLeft = Math.round(this.taskCanvas.image.width * rectangleData.start.x / this.taskCanvas.width)
       this.rectangleCanvas.imageTop = Math.round(this.taskCanvas.image.height * rectangleData.start.y / this.taskCanvas.height)
-      this.rectangleCanvas.width = this.rectangleCanvas.imageWidth * 2
-      this.rectangleCanvas.height = this.rectangleCanvas.imageHeight * 2
-    },
-    initRecorder () {
-      this.rec = Recorder({
-        type: 'mp3',
-        sampleRate: 16000,
-        bitRate: 16,
-        onProcess: (buffers, powerLevel, bufferDuration, bufferSampleRate) => {
-          this.wave.input(buffers[buffers.length - 1], powerLevel, bufferSampleRate)
-        }
-      })
-    },
-    initRecordStepData (step) {
-      this.initRecorder()
-      step.recordData.blobData = null
-      if (step.rewardData.url) (window.URL || window.webkitURL).revokeObjectURL(step.rewardData.url)
-      step.rewardData.url = null
-      step.recordData.duration = null
-      step.drawData = []
-      step.rewardData = []
-    },
-    getTaskDetail () {
-      this.loading = true
-      return new Promise((resolve, reject) => this.cloudAPP.callFunction({
-        name: 'getTaskDetail',
-        data: { taskID: this.courseData.taskID }
-      }).then(res => {
-        resolve()
-        Object.assign(this.courseData, res.result)
-        this.loading = false
-      }, error => {
-        reject(error)
-      }))
-    },
-    init () {
-      this.initRouter()
-      this.initCloudAPP()
-      this.getTaskDetail().then(this.initTaskCanvas, () => this.$message.error('加载失败'))
+      this.rectangleCanvas.width = this.rectangleCanvas.imageWidth
+      this.rectangleCanvas.height = this.rectangleCanvas.imageHeight
     },
     canvasMouseDown (e, canvas) {
-      if (Object.keys(this.currentStep).length) {
-        if (this.currentCanvas === canvas.name) {
-          canvas.drawable = true
-          const position = { x: e.offsetX, y: e.offsetY }
-          this.tempData.position = position
-          if (this.currentStep.type === 'rectangleRecord' || this.currentStep.type === 'record') {
-            this.tempData.stroke.push({
-              position,
-              time: new Date() - this.tempData.time,
-              color: this.color
-            })
-          } else {
-            this.tempData.rectangle.start = position
-            this.tempData.rectangle.color = this.color
-          }
+      if (canvas.state) {
+        canvas.drawable = true
+        const position = { x: e.offsetX, y: e.offsetY }
+        this.tempData.position = position
+        if (canvas.state === 'stroke') {
+          this.tempData.stroke.push({
+            position,
+            time: new Date() - this.tempData.time,
+            color: this.color
+          })
+        } else if (canvas.state === 'select') {
+          this.tempData.rectangle.start = position
+          this.tempData.rectangle.color = this.color
         }
       }
     },
     canvasMouseMove (e, canvas) {
-      if (Object.keys(this.currentStep).length) {
-        if (canvas.drawable) {
-          const position = { x: e.offsetX, y: e.offsetY }
-          if (this.currentStep.type === 'rectangleRecord' || this.currentStep.type === 'record') {
-            this.drawLineAndSaveItData(canvas.context, this.tempData.position, position, this.tempData.time)
-          } else this.drawRectangleWhenMouseMove(canvas, position)
-          this.tempData.position = position
+      if (canvas.state && canvas.drawable) {
+        const position = { x: e.offsetX, y: e.offsetY }
+        if (canvas.state === 'stroke') {
+          this.drawLineAndSaveItData(canvas.context, this.tempData.position, position, this.tempData.time)
+        } else if (canvas.state === 'select') {
+          this.drawRectangleWhenMouseMove(canvas, position)
         }
+        this.tempData.position = position
       }
     },
     canvasMouseUp (e, canvas) {
-      if (Object.keys(this.currentStep).length && canvas.drawable) {
+      if (canvas.state && canvas.drawable) {
         canvas.drawable = false
         const position = { x: e.offsetX, y: e.offsetY }
-        if (this.currentStep.type === 'rectangleRecord' || this.currentStep.type === 'record') {
+        if (canvas.state === 'stroke') {
           this.drawLineAndSaveItData(canvas.context, this.tempData.position, position, this.tempData.time)
           this.tempData.drawData.push(this.tempData.stroke)
           this.tempData.stroke = []
           this.processStack.push('stroke')
-        } else {
+        } else if (canvas.state === 'select') {
           this.drawRectangleWhenMouseMove(canvas, position)
           this.tempData.rectangle.end = position
           this.tempData.drawData.push(this.tempData.rectangle)
@@ -538,18 +277,16 @@ export default {
       this.clearCanvas(canvas)
       this.drawRectangles(this.tempData.drawData)
       this.drawRectangle(canvas.context, this.tempData.rectangle.start, end, this.tempData.rectangle.color)
-      this.drawText(this.taskCanvas.context, this.tempData.rectangle.start, this.tempData.drawData.length + 1)
     },
     drawRectangles (data) {
       data.forEach((rectangle, index) => {
-        this.drawText(this.taskCanvas.context, rectangle.start, index + 1)
         this.drawRectangle(this.taskCanvas.context, rectangle.start, rectangle.end, rectangle.color)
       })
     },
     drawRectangle (context, start, end, color) {
       context.beginPath()
       context.strokeStyle = color
-      context.lineWidth = 4
+      context.lineWidth = 2
       context.moveTo(start.x, start.y)
       context.lineTo(start.x, end.y)
       context.lineTo(end.x, end.y)
@@ -558,13 +295,12 @@ export default {
       context.stroke()
     },
     drawText (context, position, text) {
-      context.strokeStyle = 'black'
-      context.font = '16px serif'
-      context.fillText(text, position.x + 4, position.y + 16)
+      context.fillStyle = '#ff0000'
+      context.font = 'italic normal normal 60px handwritting'
+      context.fillText(text, position.x, position.y)
     },
     drawCircles (data) {
       data.forEach((rectangle, index) => {
-        this.drawText(this.taskCanvas.context, rectangle.start, index + 1)
         this.drawCircle(this.taskCanvas.context, rectangle.start, rectangle.end, rectangle.color)
       })
     },
@@ -583,301 +319,197 @@ export default {
       context.closePath()
       context.stroke()
     },
-    addReward (name) {
-      this.tempData.rewardData.push({
-        name: name,
-        time: new Date() - this.tempData.time
-      })
-      this.showReward(name)
-      this.processStack.push('reward')
-    },
-    showReward (name) {
-      this.trophyShow = false
-      this.medalShow = false
-      if (name === 'trophy') {
-        this.trophyShow = true
-        setTimeout(() => {
-          if (this.trophyShow) this.trophyShow = false
-        }, 600)
-      } else if (name === 'medal') {
-        this.medalShow = true
-        setTimeout(() => {
-          if (this.medalShow) this.medalShow = false
-        }, 600)
-      }
-    },
-    record (name, callback, index) {
-      const step = this.step[name].type === 'record' ? this.step[name] : this.step[name].rectangleRecord[index]
-      if (step.state === 'usable') this.startRecord(step, callback, index)
-      if (step.state === 'using') this.endRecord(step, callback, index)
-    },
-    startRecord (step, callback) {
-      if (this.stepStart()) return
-      this.startable = false
-      step.state = 'loading'
-      this.initRecordStepData(step)
-      this.rec.open(() => this.recordable(step, callback), error => this.disrecordable(error, step))
-    },
-    endRecord (step) {
-      this.startable = true
-      this.recStop()
-        .then(res => {
-          step.recordData.duration = res.duration
-          step.recordData.blobData = res.blob
-          step.recordData.url = (window.URL || window.webkitURL).createObjectURL(res.blob)
-          this.showSuccessMessage('录制成功')
-        }, error => this.$message.error('录制失败' + error))
-        .then(() => this.afterStepFinish(step))
-    },
-    recordable (step, callback) {
-      this.clearCanvas(this.taskCanvas)
-      callback && callback()
-      this.showNotify(step.tips)
-      this.counting(step).then(() => {
-        this.currentStep = step
-        this.tempData.time = new Date()
-        this.wave = Recorder.WaveView({ elem: '.' + step.name })
-        this.rec.start()
-      })
-    },
-    disrecordable (error, step) {
-      this.$message.error(error + ' 请确保录音设备正常后刷新浏览器')
-      step.state = 'usable'
-    },
-    showRectangleCanvas (step, index) {
-      this.convertImage(step.drawData[index])
-      this.$nextTick(() => {
-        this.initRectangleCanvas()
-      })
-    },
-    recStop () {
-      return new Promise((resolve, reject) => {
-        this.rec.stop((blob, duration) => {
-          this.rec.close()
-          resolve({ blob, duration })
-        }, error => {
-          this.rec.close()
-          reject(error)
-        })
-      })
-    },
-    counting (step) {
-      return new Promise(resolve => {
-        this.tempData.count = 3
-        step.state = 'counting'
-        const interval = setInterval(() => {
-          if (this.tempData.count < 1) {
-            clearInterval(interval)
-            step.state = 'using'
-            resolve()
-          }
-          this.tempData.count--
-        }, 1000)
-      })
-    },
-    select (name, recordName) {
-      this.rectanglePlay = false
-      const step = this.step[name]
-      if (step.state === 'usable') this.startSelect(step, recordName)
-      else this.endSelect(step)
-    },
-    startSelect (step, name) {
-      if (this.stepStart()) return
-      this.startable = false
-      this.showNotify(step.tips)
-      this.clearCanvas(this.taskCanvas)
-      this.currentStep = step
-      this.color = step.color
-      this.initRecordStepData(this.step[name])
-      step.state = 'using'
-      step.drawData = []
-      step.rectangleRecord.forEach(r => {
-        if (r.recordData.url) (window.URL || window.webkitURL).revokeObjectURL(r.recordData.url)
-      })
-      step.rectangleRecord = []
-    },
-    endSelect (step) {
-      this.startable = true
-      this.showSuccessMessage('选取成功')
-      this.afterStepFinish(step)
-      step.rectangleRecord = step.drawData.map((rectangle, index) => {
-        return {
-          rectangleData: rectangle,
-          name: step.name + 'Record' + index,
-          type: 'rectangleRecord',
-          state: 'usable',
-          recordData: {
-            blobData: null,
-            url: null,
-            duration: null,
-            currentTime: 0
-          },
-          rewardData: [],
-          drawData: [],
-          tips: '优秀部分单字点评录制提示优秀部分单字点评录制提示优秀部分单字点评录制提示优秀部分单字点评录制提示'
-        }
-      })
-    },
-    play (event, step, drawCircles, showRectangleCanvas) {
-      if (this.stepStart(event)) return
-      this.startable = false
-      this.clearCanvas(this.taskCanvas)
-      const time = new Date()
-      this.tempData.time = time
-      drawCircles && drawCircles()
-      showRectangleCanvas && showRectangleCanvas()
-      const canvas = showRectangleCanvas ? this.rectangleCanvas : this.taskCanvas
-      this.rectanglePlay = !!showRectangleCanvas
-      this.$nextTick(() => {
-        step.drawData.forEach(stroke => {
-          let previousPosition = stroke[0].position
-          stroke.forEach(point => {
-            if (point.time <= event.target.currentTime * 1000) {
-              this.drawLine(canvas.context, previousPosition, point.position, point.color)
-              previousPosition = point.position
-            } else {
-              setTimeout(() => {
-                if (this.tempData.time === time && !event.target.paused) {
-                  this.drawLine(canvas.context, previousPosition, point.position, point.color)
-                  previousPosition = point.position
-                }
-              }, point.time - event.target.currentTime * 1000)
-            }
-          })
-        })
-        step.rewardData.forEach(rewardData => {
-          if (rewardData.time > event.target.currentTime * 1000) {
-            setTimeout(() => {
-              if (this.tempData.time === time && !event.target.paused) {
-                this.tempData.rewardData.push(rewardData)
-                this.showReward(rewardData.name)
-              }
-            }, rewardData.time - event.target.currentTime * 1000)
-          } else this.tempData.rewardData.push(rewardData)
-        })
-      })
-    },
-    pause () {
-      this.startable = !this.startable
-    },
-    end () {
-      this.rectanglePlay = false
-      this.startable = true
-      this.tempData.rewardData = []
-    },
-    openPreviewMode () {
-      this.previewModeState = !this.previewModeState
-    },
-    preview (time) {
-      if (this.stepStart()) return
-      this.clearCanvas(this.taskCanvas)
-      this.previewData.state = !this.previewData.state
-      let waitTime = 0
-      Object.values(this.step).forEach(step => {
-        if (step.type !== 'select') {
-          if (step.recordData.blobData) {
-            if (waitTime < time && waitTime + step.recordData.duration > time) {
-              this.$refs[step.name].currentTime = (time - waitTime) / 1000
-              this.$refs[step.name].play()
-            } else {
-              setTimeout(() => {
-                this.$refs[step.name].play()
-              }, waitTime)
-            }
-            waitTime = waitTime + step.recordData.duration + 500
-          }
-        } else {
-          step.rectangleRecord.forEach(rectangleStep => {
-            if (rectangleStep.recordData && rectangleStep.recordData.duration) {
-              if (waitTime < time && waitTime + rectangleStep.recordData.duration > time) {
-                this.$refs[rectangleStep.name][0].currentTime = (time - waitTime) / 1000
-                this.$refs[rectangleStep.name][0].play()
-              } else {
-                setTimeout(() => {
-                  this.$refs[rectangleStep.name][0].play()
-                }, waitTime)
-              }
-              waitTime = waitTime + rectangleStep.recordData.duration + 500
-            }
-          })
-        }
-      })
-    },
-    stepStart (event) {
-      if (!this.startable) {
-        this.$message.error('请先结束当前播放或录制')
-        event && event.target.pause()
-        return 1
-      }
-      return 0
-    },
-    afterStepFinish (step) {
-      this.currentStep = {}
-      if (this.tempData.rewardData.length) step.rewardData = this.tempData.rewardData
-      step.drawData = this.tempData.drawData
-      this.tempData.drawData = []
-      this.tempData.rewardData = []
-      step.state = 'usable'
-      this.processStack = []
-    },
-    deleteRectangle (step, index) {
-      if (this.stepStart()) return
-      step.rectangleRecord = step.rectangleRecord.filter((rectangleData, i) => {
-        return i !== index
-      })
-      step.drawData = step.drawData.filter((rectangleData, i) => {
-        return i !== index
-      })
-      this.clearCanvas(this.taskCanvas)
-      this.drawCircles(step.drawData)
-    },
-    withdraw () {
-      const process = this.processStack.slice(-1)[0]
-      this.processStack.pop()
-      if (process === 'reward') this.tempData.rewardData.pop()
-      else {
-        this.tempData.drawData.pop()
-        if (this.currentStep.type === 'select') {
-          this.clearCanvas(this.taskCanvas)
-          this.drawRectangles(this.tempData.drawData)
-        } else if (this.currentStep.type === 'record') {
-          this.clearCanvas(this.taskCanvas)
-          let rectangleData = null
-          if (this.currentStep.name === 'step3Record') rectangleData = this.step.step3Select.drawData
-          if (this.currentStep.name === 'step4Record') rectangleData = this.step.step4Select.drawData
-          rectangleData && this.drawRectangles(rectangleData)
-          this.drawLines(this.taskCanvas.context, this.tempData.drawData)
-        } else {
-          this.initRectangleCanvas()
-          this.drawLines(this.rectangleCanvas.context, this.tempData.drawData)
-        }
-      }
-    },
-    showNotify (message) {
-      this.$notify.closeAll()
-      this.$notify({
-        title: '录制提示',
-        message,
-        duration: 15000,
-        offset: 300,
-        position: 'top-left'
-      })
-    },
-    changeColor (color) {
-      this.color = color
-    },
     clearCanvas (canvas) {
+      this.scoreDataPanelState = false
       canvas.context.clearRect(0, 0, canvas.width, canvas.height)
       canvas.context.drawImage(canvas.image, 0, 0, canvas.width, canvas.height)
     },
-    showSuccessMessage (message) {
-      this.$message({
-        message,
-        type: 'success'
+    addCharacter () {
+      this.characters.push({
+        id: '',
+        score: null,
+        images: [],
+        state: true
+      })
+      this.clearCanvas(this.taskCanvas)
+    },
+    selectCharacter (character) {
+      if (character.state) {
+        character.state = false
+        this.taskCanvas.state = 'select'
+        this.clearCanvas(this.taskCanvas)
+        character.images = []
+      } else {
+        this.processStack = []
+        character.state = true
+        this.taskCanvas.state = ''
+        this.tempData.drawData.map(async (rectangle, index) => {
+          this.convertImage(rectangle)
+          this.$set(rectangle, 'url', canvs2Image(this.taskCanvas.image, JSON.parse(JSON.stringify(this.rectangleCanvas))))
+          this.$set(rectangle, 'score', '')
+          character.images.push(rectangle)
+        })
+        this.tempData.drawData = []
+        this.clearCanvas(this.taskCanvas)
+      }
+    },
+    withdraw () {
+      if (this.processStack.pop() === 'rectangle') {
+        this.tempData.drawData.pop()
+        this.clearCanvas(this.taskCanvas)
+        this.drawRectangles(this.tempData.drawData)
+      }
+    },
+    deleteCharacter (index) {
+      if (this.characters[index].state) {
+        this.clearCanvas(this.taskCanvas)
+        this.characters.splice(index, 1)
+      } else this.$message.error('请先结束当前选取')
+    },
+    generateTrack () {
+      let state = this.characters.length
+      if (state) {
+        this.characters.forEach(character => {
+          state = state && character.state
+        })
+        if (state) {
+          if (this.scoreState() && this.characters.length) {
+            this.clearCanvas(this.taskCanvas)
+            this.totalScore = 0
+            let totalScore = 0
+            this.characters.forEach(character => {
+              let score = 0
+              character.images.forEach(image => {
+                const icon = new Image()
+                icon.setAttribute('crossOrigin', 'anonymous')
+                icon.src = image.score < 80 ? './x.png' : './v.png'
+                const offset = image.score < 80 ? 24 : 30
+                icon.onload = () => {
+                  this.taskCanvas.context.drawImage(icon, image.end.x - offset, image.end.y - offset, icon.width, icon.height)
+                }
+                score += image.score - 0
+              })
+              character.score = this.$set(character, 'score', Math.floor(score / character.images.length))
+              totalScore = totalScore + character.score
+            })
+            this.totalScore = Math.floor(totalScore / this.characters.length)
+            const icon = new Image()
+            icon.setAttribute('crossOrigin', 'anonymous')
+            icon.src = './pin.png'
+            icon.onload = () => {
+              this.taskCanvas.context.drawImage(icon, this.taskCanvas.width - 120, 20, icon.width, icon.height)
+              this.drawText(this.taskCanvas.context, { x: this.taskCanvas.width - 110, y: 90 }, this.totalScore)
+            }
+            this.scoreDataPanelState = true
+          } else this.$message.error('请填写所选字的具体信息')
+        } else this.$message.error('请先结束当前选取')
+      } else this.$message.error('请先选取具体字')
+    },
+    scoreState () {
+      let state = this.characters.length
+      this.characters.forEach(character => {
+        state = state && character.id
+        character.images.forEach(image => {
+          state = state && image.score
+        })
+      })
+      return state
+    },
+    async finishRevise () {
+      this.loading = true
+      this.worksData.correct_data.characters = JSON.parse(JSON.stringify(this.characters))
+      await new Promise(resolve => this.$refs[this.taskCanvas.name].toBlob(async blob => {
+        const correctImage = await this.cloudAPP.uploadFile({
+          cloudPath: `works/${this.worksData.task_id}-${this.worksData.user_id}-${this.worksData.type}-correct.png`,
+          filePath: blob
+        })
+        this.worksData.correct_data.correct_works_fileID = correctImage.fileID
+        this.worksData.correct_data.score = this.totalScore
+        this.worksData.submit_date = new Date()
+        await Promise.all(this.worksData.correct_data.characters.map(async character => {
+          await Promise.all(character.images.map(async (image, index) => {
+            const uploadImage = await this.cloudAPP.uploadFile({
+              cloudPath: `works/${this.worksData.task_id}-${this.worksData.user_id}-${this.worksData.type}-${character.id}-${index}.png`,
+              filePath: this.dataURLtoBlob(image.url)
+            })
+            image.fileID = uploadImage.fileID
+            delete image.url
+          }))
+        }))
+        console.log(this.worksData.correct_data)
+        await this.cloudAPP.callFunction({
+          name: 'reviseWorks',
+          data: {
+            correct_data: this.worksData.correct_data,
+            works_id: this.worksData._id,
+            correct_state: true
+          }
+        })
+        if (this.worksData.message === true) {
+          await this.cloudAPP.database().collection('message').add({
+            type: 'finish',
+            done: false,
+            title: this.worksData.title,
+            open_id: this.worksData._openid,
+            works_type: this.worksData.type
+          })
+        }
+        resolve()
+      }))
+      this.loading = false
+    },
+    dataURLtoBlob (dataurl) {
+      const arr = dataurl.split(',')
+      const mime = arr[0].match(/:(.*?);/)[1]
+      const bstr = atob(arr[1])
+      let n = bstr.length
+      const u8arr = new Uint8Array(n)
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n)
+      }
+      return new Blob([u8arr], { type: mime })
+    },
+    deleteWorks () {
+      this.$confirm('此操作将删除该作业, 是否继续？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+        center: true
+      }).then(async action => {
+        this.loading = true
+        try {
+          await this.cloudAPP.database().collection('works').doc(this.worksData._id).remove()
+          this.$message('删除成功')
+          if (this.worksData.message === true) {
+            await this.cloudAPP.database().collection('message').add({
+              type: 'delete',
+              done: false,
+              title: this.worksData.title,
+              open_id: this.worksData._openid,
+              works_type: this.worksData.type
+            })
+          }
+          setTimeout(() => {
+            this.$router.go(-1)
+          }, 1000)
+        } catch (e) {
+          this.$message.error('删除失败')
+        }
+      }).catch(() => {
+        this.$message({
+          type: 'info',
+          message: '已取消删除'
+        })
       })
     },
-    timeUpdate (event, step) {
-      step.recordData.currentTime = event.target.currentTime
+    copyToClip () {
+      const aux = document.createElement('input')
+      aux.setAttribute('value', `${this.worksData.schoolName}\t${this.worksData.gradeName}${this.worksData.className}\t${this.worksData.userName}\t${this.worksData.title}`)
+      document.body.appendChild(aux)
+      aux.select()
+      document.execCommand('copy')
+      document.body.removeChild(aux)
+      this.$message('复制成功')
     }
   },
   destroyed () {
@@ -900,8 +532,7 @@ export default {
         justify-content: space-between;
         padding: 0 20px;
         .section {
-          width: 150px;
-          text-align: center;
+          margin-right: 30px;
         }
         .title {
           font-weight: bold;
@@ -1003,6 +634,7 @@ export default {
             }
             .rectangleCanvas {
               position: absolute;
+              border: 1px solid black;
             }
           }
           .reward {
@@ -1047,31 +679,45 @@ export default {
         }
         .reviewProcess {
           width: 540px;
-          height: 775px;
+          height: 900px;
           padding-bottom: 0;
-          .collapse {
-            height: 698px;
-            overflow-y: scroll;
-            padding-bottom: 20px;
-            .collapse-item-content {
-              margin: 14px 0;
+          overflow-y: scroll;
+          .deleteIcon {
+            border: 1px solid #DCDFE6;
+            padding: 10px;
+            border-radius: 4px;
+          }
+          .images {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            .item {
               display: flex;
               flex-direction: row;
               align-items: center;
-              .totalScore {
-                width: 70px;
-                margin-right: 7px;
-              }
-              .el-button {
-                width: 80px;
-                padding: 12px;
-                margin-right: 10px;
-                text-align: center;
-              }
-              .tag {
-                margin-right: 10px;
+              flex: 1;
+              .character {
+                width: 60px;
+                height: 60px;
+                margin-right: 20px;
+                margin-bottom: 20px;
+                object-fit: cover;
               }
             }
+          }
+          .totalScore {
+            width: 70px;
+            margin-right: 7px;
+          }
+          .el-button {
+            width: 80px;
+            padding: 12px;
+            margin-right: 10px;
+            text-align: center;
+          }
+          .tag {
+            margin-right: 10px;
           }
         }
       }
