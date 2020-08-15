@@ -80,6 +80,25 @@
               </div>
             </div>
           </div>
+          <div class="title">步骤三 整体评价</div>
+          <div class="content">
+            <el-button @click="record(step.step1Record)">{{computedRecordButtonValue(step.step1Record)}}</el-button>
+            <div class="step1Record wave" v-show="!step.step1Record.recordData.blobData"></div>
+            <audio ref="step1Record" controls @play="play($event, step.step1Record)" :src="step.step1Record.recordData.url"
+                   @ended="end" @pause="pause" @timeupdate="timeUpdate($event, step.step1Record)" v-show="step.step1Record.recordData.blobData"></audio>
+            <div>比上次进步了</div>
+          </div>
+          <div class="title">步骤四 规范字评价</div>
+          <div class="content">
+            <el-button @click="record(step.step2Record)">{{computedRecordButtonValue(step.step2Record)}}</el-button>
+            <div class="step2Record wave" v-show="!step.step2Record.recordData.blobData"></div>
+            <audio ref="step2Record" controls @play="play($event, step.step2Record)" :src="step.step2Record.recordData.url"
+                   @ended="end" @pause="pause" @timeupdate="timeUpdate($event, step.step2Record)" v-show="step.step2Record.recordData.blobData"></audio>
+          </div>
+          <div class="title">步骤五 不规范字评价</div>
+          <div class="content">
+            <el-button @click="generateUnqualified">查看不规范字</el-button>
+          </div>
         </el-card>
       </div>
     </el-card>
@@ -90,11 +109,16 @@
 import tcb from 'tcb-js-sdk'
 import router from '../router'
 import canvs2Image from '../lib/canvas2Image'
+import Recorder from 'recorder-core'
+import 'recorder-core/src/engine/mp3'
+import 'recorder-core/src/engine/mp3-engine'
+import 'recorder-core/src/extensions/waveview'
 
 export default {
   name: 'TaskDetail',
   data () {
     return {
+      cloudAPP: null,
       worksData: {
         worksID: null,
         studentName: null,
@@ -113,7 +137,7 @@ export default {
         width: null,
         height: null,
         drawable: null,
-        state: ''
+        state: 'stroke'
       },
       rectangleCanvas: {
         image: null,
@@ -139,11 +163,83 @@ export default {
       color: 'red',
       totalScore: 0,
       scoreData: {},
-      scoreDataPanelState: false
+      scoreDataPanelState: false,
+      step: {
+        step1Record: {
+          name: 'step1Record',
+          type: 'record',
+          state: 'usable', // 'usable' || 'loading' || 'using' || 'counting'
+          recordData: {
+            blobData: null,
+            url: null,
+            duration: null,
+            currentTime: 0
+          },
+          drawData: [],
+          rewardData: [],
+          tips: '整体评价'
+        },
+        step2Record: {
+          name: 'step2Record',
+          type: 'record',
+          state: 'usable', // 'usable' || 'loading' || 'using' || 'counting'
+          recordData: {
+            blobData: null,
+            url: null,
+            duration: null,
+            currentTime: 0
+          },
+          rewardData: [],
+          totalScore: null,
+          drawData: [],
+          tips: '优秀部分点评'
+        },
+        step3Select: {
+          name: 'step3Select',
+          type: 'select',
+          state: 'usable', // 'usable' || 'using'
+          drawData: [],
+          tips: '不规范字点评',
+          color: '#40bf40',
+          rectangleRecord: []
+        },
+        step4Record: {
+          name: 'step2Record',
+          type: 'record',
+          state: 'usable', // 'usable' || 'loading' || 'using' || 'counting'
+          recordData: {
+            blobData: null,
+            url: null,
+            duration: null,
+            currentTime: 0
+          },
+          rewardData: [],
+          totalScore: null,
+          drawData: [],
+          tips: '收尾点评'
+        }
+      },
+      startable: true,
+      currentStep: {}
     }
   },
   mounted () {
     this.init()
+  },
+  computed: {
+    computedRecordButtonValue () {
+      return (step) => {
+        let buttonValue = ''
+        if (step.state === 'usable' && !step.recordData.blobData) buttonValue = '开始录制'
+        if (step.state === 'usable' && step.recordData.blobData) buttonValue = '重新录制'
+        if (step.state === 'using') buttonValue = '结束录制'
+        if (step.state === 'counting') buttonValue = this.tempData.count === 0 ? '开始录制' : this.tempData.count
+        return buttonValue
+      }
+    },
+    currentCanvas () {
+      return this.currentStep && this.currentStep.type === 'rectangleRecord' ? 'rectangleCanvas' : 'taskCanvas'
+    }
   },
   methods: {
     async init () {
@@ -193,6 +289,147 @@ export default {
       const rectangleCanvas = this.rectangleCanvas
       rectangleCanvas.context.drawImage(this.taskCanvas.image, rectangleCanvas.imageLeft, rectangleCanvas.imageTop, rectangleCanvas.imageWidth, rectangleCanvas.imageHeight, 0, 0, rectangleCanvas.width, rectangleCanvas.height)
     },
+    record (step) {
+      if (step.state === 'usable') this.startRecord(step)
+      if (step.state === 'using') this.endRecord(step)
+    },
+    startRecord (step, callback) {
+      if (this.stepStart()) return
+      this.startable = false
+      step.state = 'loading'
+      this.initRecordStepData(step)
+      this.rec.open(() => this.recordable(step, callback), error => this.disrecordable(error, step))
+    },
+    stepStart (event) {
+      if (!this.startable) {
+        this.$message.error('请先结束当前播放或录制')
+        event && event.target.pause()
+        return 1
+      }
+      return 0
+    },
+    endRecord (step) {
+      this.startable = true
+      this.recStop()
+        .then(res => {
+          step.recordData.duration = res.duration
+          step.recordData.blobData = res.blob
+          step.recordData.url = (window.URL || window.webkitURL).createObjectURL(res.blob)
+          this.showSuccessMessage('录制成功')
+        }, error => this.$message.error('录制失败' + error))
+        .then(() => this.afterStepFinish(step))
+    },
+    initRecorder () {
+      this.rec = Recorder({
+        type: 'mp3',
+        sampleRate: 16000,
+        bitRate: 16,
+        onProcess: (buffers, powerLevel, bufferDuration, bufferSampleRate) => {
+          this.wave.input(buffers[buffers.length - 1], powerLevel, bufferSampleRate)
+        }
+      })
+    },
+    initRecordStepData (step) {
+      this.initRecorder()
+      step.recordData.blobData = null
+      if (step.rewardData.url) (window.URL || window.webkitURL).revokeObjectURL(step.rewardData.url)
+      step.rewardData.url = null
+      step.recordData.duration = null
+      step.drawData = []
+      step.rewardData = []
+    },
+    play (event, step, drawCircles, showRectangleCanvas) {
+      if (this.stepStart(event)) return
+      this.startable = false
+      this.taskCanvas.context.clearRect(0, 0, this.taskCanvas.width, this.taskCanvas.height)
+      this.taskCanvas.context.drawImage(this.taskCanvas.image, 0, 0, this.taskCanvas.width, this.taskCanvas.height)
+      const time = new Date()
+      this.tempData.time = time
+      drawCircles && drawCircles()
+      showRectangleCanvas && showRectangleCanvas()
+      const canvas = showRectangleCanvas ? this.rectangleCanvas : this.taskCanvas
+      this.rectanglePlay = !!showRectangleCanvas
+      this.$nextTick(() => {
+        step.drawData.forEach(stroke => {
+          let previousPosition = stroke[0].position
+          stroke.forEach(point => {
+            if (point.time <= event.target.currentTime * 1000) {
+              this.drawLine(canvas.context, previousPosition, point.position, point.color)
+              previousPosition = point.position
+            } else {
+              setTimeout(() => {
+                if (this.tempData.time === time && !event.target.paused) {
+                  this.drawLine(canvas.context, previousPosition, point.position, point.color)
+                  previousPosition = point.position
+                }
+              }, point.time - event.target.currentTime * 1000)
+            }
+          })
+        })
+        step.rewardData.forEach(rewardData => {
+          if (rewardData.time > event.target.currentTime * 1000) {
+            setTimeout(() => {
+              if (this.tempData.time === time && !event.target.paused) {
+                this.tempData.rewardData.push(rewardData)
+                this.showReward(rewardData.name)
+              }
+            }, rewardData.time - event.target.currentTime * 1000)
+          } else this.tempData.rewardData.push(rewardData)
+        })
+      })
+    },
+    recStop () {
+      return new Promise((resolve, reject) => {
+        this.rec.stop((blob, duration) => {
+          this.rec.close()
+          resolve({ blob, duration })
+        }, error => {
+          this.rec.close()
+          reject(error)
+        })
+      })
+    },
+    pause () {
+      this.startable = !this.startable
+    },
+    end () {
+      this.rectanglePlay = false
+      this.startable = true
+      this.tempData.rewardData = []
+    },
+    timeUpdate (event, step) {
+      step.recordData.currentTime = event.target.currentTime
+    },
+    counting (step) {
+      return new Promise(resolve => {
+        this.tempData.count = 3
+        step.state = 'counting'
+        const interval = setInterval(() => {
+          if (this.tempData.count < 1) {
+            clearInterval(interval)
+            step.state = 'using'
+            resolve()
+          }
+          this.tempData.count--
+        }, 1000)
+      })
+    },
+    disrecordable (error, step) {
+      this.$message.error(error + ' 请确保录音设备正常后刷新浏览器')
+      step.state = 'usable'
+      this.startable = true
+    },
+    recordable (step, callback) {
+      this.clearCanvas(this.taskCanvas)
+      callback && callback()
+      this.showNotify(step.tips)
+      this.counting(step).then(() => {
+        this.currentStep = step
+        this.tempData.time = new Date()
+        this.wave = Recorder.WaveView({ elem: '.' + step.name })
+        this.rec.start()
+      })
+    },
     convertImage (rectangleData) {
       this.rectangleCanvas.imageWidth = Math.round(Math.abs(rectangleData.end.x - rectangleData.start.x) * this.taskCanvas.image.height / this.taskCanvas.height)
       this.rectangleCanvas.imageHeight = Math.round(Math.abs(rectangleData.end.y - rectangleData.start.y) * this.taskCanvas.image.width / this.taskCanvas.width)
@@ -202,48 +439,56 @@ export default {
       this.rectangleCanvas.height = this.rectangleCanvas.imageHeight
     },
     canvasMouseDown (e, canvas) {
-      if (canvas.state) {
-        canvas.drawable = true
-        const position = { x: e.offsetX, y: e.offsetY }
-        this.tempData.position = position
-        if (canvas.state === 'stroke') {
-          this.tempData.stroke.push({
-            position,
-            time: new Date() - this.tempData.time,
-            color: this.color
-          })
-        } else if (canvas.state === 'select') {
-          this.tempData.rectangle.start = position
-          this.tempData.rectangle.color = this.color
+      if (Object.keys(this.currentStep).length) {
+        if (this.currentCanvas === canvas.name) {
+          if (canvas.state) {
+            canvas.drawable = true
+            const position = { x: e.offsetX, y: e.offsetY }
+            this.tempData.position = position
+            if (canvas.state === 'stroke') {
+              this.tempData.stroke.push({
+                position,
+                time: new Date() - this.tempData.time,
+                color: this.color
+              })
+            } else if (canvas.state === 'select') {
+              this.tempData.rectangle.start = position
+              this.tempData.rectangle.color = this.color
+            }
+          }
         }
       }
     },
     canvasMouseMove (e, canvas) {
-      if (canvas.state && canvas.drawable) {
-        const position = { x: e.offsetX, y: e.offsetY }
-        if (canvas.state === 'stroke') {
-          this.drawLineAndSaveItData(canvas.context, this.tempData.position, position, this.tempData.time)
-        } else if (canvas.state === 'select') {
-          this.drawRectangleWhenMouseMove(canvas, position)
+      if (Object.keys(this.currentStep).length) {
+        if (canvas.state && canvas.drawable) {
+          const position = { x: e.offsetX, y: e.offsetY }
+          if (canvas.state === 'stroke') {
+            this.drawLineAndSaveItData(canvas.context, this.tempData.position, position, this.tempData.time)
+          } else if (canvas.state === 'select') {
+            this.drawRectangleWhenMouseMove(canvas, position)
+          }
+          this.tempData.position = position
         }
-        this.tempData.position = position
       }
     },
     canvasMouseUp (e, canvas) {
-      if (canvas.state && canvas.drawable) {
-        canvas.drawable = false
-        const position = { x: e.offsetX, y: e.offsetY }
-        if (canvas.state === 'stroke') {
-          this.drawLineAndSaveItData(canvas.context, this.tempData.position, position, this.tempData.time)
-          this.tempData.drawData.push(this.tempData.stroke)
-          this.tempData.stroke = []
-          this.processStack.push('stroke')
-        } else if (canvas.state === 'select') {
-          this.drawRectangleWhenMouseMove(canvas, position)
-          this.tempData.rectangle.end = position
-          this.tempData.drawData.push(this.tempData.rectangle)
-          this.tempData.rectangle = {}
-          this.processStack.push('rectangle')
+      if (Object.keys(this.currentStep).length && canvas.drawable) {
+        if (canvas.state && canvas.drawable) {
+          canvas.drawable = false
+          const position = { x: e.offsetX, y: e.offsetY }
+          if (canvas.state === 'stroke') {
+            this.drawLineAndSaveItData(canvas.context, this.tempData.position, position, this.tempData.time)
+            this.tempData.drawData.push(this.tempData.stroke)
+            this.tempData.stroke = []
+            this.processStack.push('stroke')
+          } else if (canvas.state === 'select') {
+            this.drawRectangleWhenMouseMove(canvas, position)
+            this.tempData.rectangle.end = position
+            this.tempData.drawData.push(this.tempData.rectangle)
+            this.tempData.rectangle = {}
+            this.processStack.push('rectangle')
+          }
         }
       }
     },
@@ -335,6 +580,9 @@ export default {
     },
     selectCharacter (character) {
       if (character.state) {
+        this.currentStep = {
+          type: 'select'
+        }
         character.state = false
         this.taskCanvas.state = 'select'
         this.clearCanvas(this.taskCanvas)
@@ -342,7 +590,7 @@ export default {
       } else {
         this.processStack = []
         character.state = true
-        this.taskCanvas.state = ''
+        this.taskCanvas.state = 'stroke'
         this.tempData.drawData.map(async (rectangle, index) => {
           this.convertImage(rectangle)
           this.$set(rectangle, 'url', canvs2Image(this.taskCanvas.image, JSON.parse(JSON.stringify(this.rectangleCanvas))))
@@ -510,6 +758,34 @@ export default {
       document.execCommand('copy')
       document.body.removeChild(aux)
       this.$message('复制成功')
+    },
+    showNotify (message) {
+      this.$notify.closeAll()
+      this.$notify({
+        title: '录制提示',
+        message,
+        duration: 15000,
+        offset: 300,
+        position: 'top-left'
+      })
+    },
+    showSuccessMessage (message) {
+      this.$message({
+        message,
+        type: 'success'
+      })
+    },
+    afterStepFinish (step) {
+      this.currentStep = {}
+      if (this.tempData.rewardData.length) step.rewardData = this.tempData.rewardData
+      step.drawData = this.tempData.drawData
+      this.tempData.drawData = []
+      this.tempData.rewardData = []
+      step.state = 'usable'
+      this.processStack = []
+    },
+    generateUnqualified () {
+      console.log(1)
     }
   },
   destroyed () {
